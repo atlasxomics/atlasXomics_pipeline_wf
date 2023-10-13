@@ -1,1 +1,1 @@
-# atlasXomics_pipeline_wf
+# ATX epigenomic preprocessing
