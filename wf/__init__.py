@@ -1,9 +1,11 @@
 import glob, os
 import subprocess
+import pandas as pd
+import logging
+from ast import literal_eval
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
-import glob
 from latch import large_task, medium_task, small_task, workflow
 from latch.resources.launch_plan import LaunchPlan
 from latch.registry.table import Table
@@ -15,15 +17,13 @@ from latch.types import (
     LatchParameter,
     LatchRule
 )
-import pandas as pd
-from ast import literal_eval
-import logging
 
 
 
 class Genome(Enum):
     mm10 = 'mm10'
     hg38 = 'hg38'
+    rnor6 = 'rnor6'
 
 class BarcodeFile(Enum):
     x50 = "bc50.txt"
@@ -32,7 +32,7 @@ class BarcodeFile(Enum):
 
 
 @large_task(retries=0)
-def filter_task(
+def Filtering(
     r1: LatchFile,
     r2: LatchFile,
     run_id: str,
@@ -118,7 +118,7 @@ def filter_task(
     return (
             LatchFile(
                 str(filtered_r1_l2),
-                f"latch:///chromap_outputs/{run_id}/chromap_inputs/{run_id}_S1_L001_R1_001.fastq.gz"
+                f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_S1_L001_R1_001.fastq.gz"
         ),
             LatchFile(
                 str(filtered_r2_l2),
@@ -138,14 +138,14 @@ def filter_task(
         
 
 @large_task(retries=0)
-def chromap_alignment(
+def Alignment(
     r1: LatchFile,
     r2: LatchFile,
     species: LatchDir,
     run_id: str,
     barcode_file: BarcodeFile
 
-) -> Tuple[LatchFile,LatchFile,LatchFile]:
+) -> Tuple[LatchFile,LatchFile,LatchFile,LatchFile]:
     """Run chromap alignment
     """
     barcode_path = Path(f"{barcode_file.value}").resolve()
@@ -221,7 +221,7 @@ def chromap_alignment(
     temp_file = Path(f"{outdir}/temp.bed").resolve()
     unzip_file = Path(f"{outdir}/fragments.tsv").resolve()
     output_file = Path(f"{outdir}/fragments.tsv.gz").resolve()
-
+    output_file_index = Path(f"{outdir}/fragments.tsv.gz.tbi").resolve()
     subprocess.run([
     "echo",
     str("add -1 to barcodes and zip the file!!")])
@@ -242,21 +242,26 @@ def chromap_alignment(
     with open(str(output_file), 'w') as fw:
           subprocess.run(['bgzip', '-c', str(unzip_file)], stdout=fw)
           
+    with open(str(output_file_index), 'w') as fw:
+          subprocess.run(['tabix', '-p', 'bed', str(output_file), '-f'],  stdout=fw)
 
     return (
            LatchFile(str(fragment), f"latch:///chromap_outputs/{run_id}/chromap_output/aln.bed"),
            LatchFile(str(logfile), f"latch:///chromap_outputs/{run_id}/chromap_output/chromap_log.txt"),
-           LatchFile(str(output_file), f"latch:///chromap_outputs/{run_id}/chromap_output/fragments.tsv.gz")
+           LatchFile(str(output_file), f"latch:///chromap_outputs/{run_id}/chromap_output/fragments.tsv.gz"),
+           LatchFile(str(output_file_index), f"latch:///chromap_outputs/{run_id}/chromap_output/fragments.tsv.gz.tbi")
            )
 
 
 
 @large_task
-def statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile, species: LatchDir, run_id: str, barcode_file: BarcodeFile) -> LatchDir:
-    work_dir = Path("statistics/").resolve()
+def Statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile, species: LatchDir, run_id: str, barcode_file: BarcodeFile) -> LatchDir:
+    work_dir = Path("Statistics/").resolve()
     os.mkdir(work_dir)
     tmp_dir = Path("tmp_dir/").resolve()
     os.mkdir(tmp_dir)
+#    outdir = Path("chromap_output/").resolve()
+#    os.mkdir(outdir)
 
     bc1 = Path(f"{work_dir}/bc1.txt").resolve()
     bc2 = Path(f"{work_dir}/bc2.txt").resolve()
@@ -264,7 +269,8 @@ def statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile,
     bed_bc_freq = Path(f"{work_dir}/bed_bc_freq.txt").resolve()
     stats = Path(f"{work_dir}/stats.csv").resolve()
     whitelist =  Path(f"{barcode_file.value}").resolve()
-#    fragment_edited = Path(f"{work_dir}/fragments_edited.tsv.gz").resolve()
+    peak_file = Path(f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak").resolve()
+    h5_file = Path(f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_raw_peak_bc_matrix.h5").resolve()
 
     subprocess.run([
     "echo",
@@ -306,18 +312,24 @@ def statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile,
         
         if (glob.glob(f"{species.local_path}/*.index")[0].split("/")[-1].split("_")[0]=='GRCm38'):
            genome='mm'
-        else:
+        elif (glob.glob(f"{species.local_path}/*.index")[0].split("/")[-1].split("_")[0]=='GRCh38'):
            genome='hs'
+        else:
+           genome='rnor6'
 
         if (genome=='mm'):
            chrsize=Path("mm10_chrom_sizes.txt").resolve()
-        else:
+        elif (genome=='hs'):
            chrsize=Path("hg38_chrom_sizes.txt").resolve()
+        else:
+           chrsize=Path("rn6_chrom_sizes.txt").resolve()
 
         if (genome=='mm'):
            black_lst=Path("blacklist/mm10-blacklist.v2.bed").resolve()
-        else:
+        elif (genome=='hs'):
            black_lst=Path("blacklist/hg38-blacklist.v2.bed").resolve()
+        else:
+           black_lst= None
 
 
         _bc_cmd = [
@@ -351,26 +363,32 @@ def statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile,
                   work_dir,
                   "-t",
                   tmp_dir,
+#                  "-otd",
+#                  outdir,
                   "-v",
                   open(Path("version").resolve(), 'r').read(),
-                  "-o",
-                  str(stats)
         ]
 
         subprocess.run(_bc_cmd)
 
+        _report_cmd = [
+            'Rscript',
+            '/root/peak_files.R',
+            frag.local_path,
+            peak_file,
+            genome,
+            run_id,
+        ]
 
-        return LatchDir(str(work_dir), f"latch:///chromap_outputs/{run_id}/statistics")
-
-
-
-
+        subprocess.run(_report_cmd)
+        return LatchDir(str(work_dir), f"latch:///chromap_outputs/{run_id}/Statistics")
+              
 
 
 metadata = LatchMetadata(
-    display_name="atlasXomics_pipeline_wf",
+    display_name="ATX epigenomic preprocessing",
     author=LatchAuthor(
-        name="Noori Sotoudeh",
+        name="Noori Sotudeh",
         email="noorisotudeh@gmail.com",
         github="https://github.com/atlasxomics/atlasXomics_pipeline_wf",
     ),
@@ -430,7 +448,7 @@ metadata = LatchMetadata(
     },
 )
 @workflow(metadata)
-def chromap_alignment_wf(
+def total_wf(
     r1: LatchFile,
     r2: LatchFile,
     run_id: str,
@@ -458,7 +476,7 @@ def chromap_alignment_wf(
 
 
 
-    filtered_r1, filtered_r2, _, _ = filter_task(
+    filtered_r1, filtered_r2, _, _ = Filtering(
         r1=r1,
         r2=r2,
         run_id=run_id,
@@ -466,7 +484,7 @@ def chromap_alignment_wf(
         skip2=skip2
     )
 
-    chromap_bed, chromap_log, chromap_frag = chromap_alignment(
+    chromap_bed, chromap_log, chromap_frag, chromap_index = Alignment(
         r1=filtered_r1,
         r2=filtered_r2,
         run_id=run_id,
@@ -474,7 +492,7 @@ def chromap_alignment_wf(
         barcode_file=barcode_file
     )
 
-    reports =  statistics(
+    reports =  Statistics(
         r2=r2,
         bed=chromap_bed,
         frag=chromap_frag,
@@ -485,11 +503,11 @@ def chromap_alignment_wf(
     )
 
 
-    return [chromap_bed, chromap_frag, chromap_log, reports]
+    return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
 
 LaunchPlan(
-    chromap_alignment_wf,
+    total_wf,
     "default",
     {
         "r1" : LatchFile("latch:///noori/coProf/cp1.100cov.fq.gz"),
@@ -504,11 +522,15 @@ LaunchPlan(
 )
 
 if __name__ == '__main__':
-    statistics(
+    Statistics(
+#            r1="./chromap_R1.fq.gz",
             r2="./chromap_R2.fq.gz",
-            bed="aln.bed",
-            logfile="chromap_log.txt",
             species="Refdata_scATAC_MAESTRO_GRCm38_1.1.0",
             run_id="test",
-            barcode_file=BarcodeFile.x50
+            barcode_file=BarcodeFile.x50,
+#            skip1=True,
+#            skip2=True
+            bed="./chromap_output/aln.bed",
+            frag="./chromap_output/fragments.tsv.gz",
+            logfile="./chromap_output/chromap_log.txt"
               )
