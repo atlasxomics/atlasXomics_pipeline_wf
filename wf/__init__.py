@@ -7,6 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
 from latch import large_task, medium_task, small_task, workflow
+from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
 from latch.registry.table import Table
 from latch.types import (
@@ -18,6 +19,7 @@ from latch.types import (
     LatchRule
 )
 
+import wf.lims as lims
 
 
 class Genome(Enum):
@@ -395,7 +397,48 @@ def Statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile,
         subprocess.run(_report_cmd)
         return LatchDir(str(work_dir), f"latch:///chromap_outputs/{run_id}/Statistics")
               
+@small_task(retries=0)
+def lims_task(
+    results_dir: LatchDir,
+    run_id: str,
+    upload: bool,
+    ng_id: Optional[str]
+) -> LatchDir:
+    
+    if upload:
 
+        data = Path(results_dir.local_path + f'/summary.csv').resolve()
+        
+        slims = lims.slims_init()
+        results = lims.csv_to_dict(data)
+    
+        payload = {lims.mapping[key]:value for (key, value) in results.items()
+                    if key in lims.mapping.keys() and value not in lims.NA}
+    
+        if ng_id:
+            pk = lims.get_pk(ng_id, slims)
+        else:
+            try:
+                pk = lims.get_pk(run_id.split('_')[-1], slims)
+            except IndexError:
+                logging.warning('Invalid SLIMS ng_id.')
+                message(
+                    typ='warning',
+                    data={
+                    "title": "SLIMS fail", "body": "Invalid SLIMS ng_id."
+                    }
+                )
+                return results_dir
+    
+        payload['rslt_fk_content'] = pk
+        payload['rslt_fk_test'] = 39
+        payload['rslt_value'] = 'upload'
+
+        logging.info(f"upload succeeded: {lims.push_result(payload, slims)}")
+    
+        return results_dir
+
+    return results_dir
 
 metadata = LatchMetadata(
     display_name="ATX epigenomic preprocessing",
@@ -456,7 +499,30 @@ metadata = LatchMetadata(
                         bc50.txt for SOP 50x50, bc96.txt for 96x96, \
                         bc50_old.txt for previous version of 50x50.",
             batch_table_column=True,
-        )
+        ),
+        "upload_to_slims": LatchParameter(
+            display_name="upload to slims",
+            description="Select for run metrics to be upload to SLIMS; if \
+                        selected provide ng_id.",
+            batch_table_column=True,
+        ),
+        "ng_id": LatchParameter(
+            display_name="ng_id",
+            description="Provide SLIMS ng_id (ie. NG00001) if pushing to \
+                        SLIMS and run_id does not end in '_NG00001'.",
+            placeholder="NGxxxxx",
+            batch_table_column=True,
+            rules=[
+                LatchRule(
+                    regex="^NG[0-9]{5}$",
+                    message="ng_id must match NGxxxxx format."
+                ),
+                LatchRule(
+                    regex="^\S+$",
+                    message="run id cannot contain whitespace"
+                )
+            ]
+        ),
     },
 )
 @workflow(metadata)
@@ -467,6 +533,8 @@ def total_wf(
     skip1: bool,
     skip2: bool,
     species: LatchDir,
+    ng_id: Optional[str],
+    upload_to_slims: bool,
     barcode_file: BarcodeFile = BarcodeFile.x50,
 ) -> List[Union[LatchDir, LatchFile]]:
     """Pipeline for processing Spatial Whole Transcriptome data generated via DBiT-seq.
@@ -485,8 +553,6 @@ def total_wf(
     * extract barcode (new read2) from read2
     * run chromap alignment and get fragment file
     """
-
-
 
     filtered_r1, filtered_r2, _, _ = Filtering(
         r1=r1,
@@ -513,7 +579,13 @@ def total_wf(
         run_id=run_id,
         barcode_file=barcode_file
     )
-
+    
+    lims_task(
+        results_dir=reports,
+        run_id=run_id,
+        upload=upload_to_slims,
+        ng_id=ng_id
+    )
 
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 

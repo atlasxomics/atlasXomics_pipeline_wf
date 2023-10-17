@@ -385,14 +385,14 @@ summary_df = pd.DataFrame(columns=['Sample ID'])
 summary_df.at[0, 'Sample ID'] = f"{run_id}"
 summary_df.at[0, 'Genome'] = genome
 summary_df.at[0, 'Pipeline version'] = "AtlasXomics-" + version
-summary_df.at[0, 'Fraction aligned reads '] = chromap_log_stats(logfile,"Number of uni-mappings") / chromap_log_stats(logfile,"Number of mappings")
-summary_df.at[0, 'Chromap input read pairs '] = singlecell_df['total'][0]
-summary_df.at[0, 'Fraction unaligned reads '] = 1-(chromap_log_stats(logfile,"Number of mapped reads") / chromap_log_stats(logfile,"Number of reads"))
-summary_df.at[0, 'Fraction reads with valid barcode '] = 1-(chromap_log_stats(logfile,"Number of corrected barcodes") / chromap_log_stats(logfile,"Number of barcodes in whitelist"))
+summary_df.at[0, 'Fraction aligned reads'] = chromap_log_stats(logfile,"Number of uni-mappings") / chromap_log_stats(logfile,"Number of mappings")
+summary_df.at[0, 'Chromap input read pairs'] = singlecell_df['total'][0]
+summary_df.at[0, 'Fraction unaligned reads'] = 1-(chromap_log_stats(logfile,"Number of mapped reads") / chromap_log_stats(logfile,"Number of reads"))
+summary_df.at[0, 'Fraction reads with valid barcode'] = 1-(chromap_log_stats(logfile,"Number of corrected barcodes") / chromap_log_stats(logfile,"Number of barcodes in whitelist"))
 summary_df.at[0, 'Number of peaks'] = len(peak_file.index)
 summary_df.at[0, 'TSS_enrichment'] = max([cistopic_obj.cell_data['TSS_enrichment'].mean(),cistopic_obj.cell_data['TSS_enrichment'].median()])
 summary_df.at[0, 'FRIP'] = max([cistopic_obj.cell_data['FRIP'].mean(),cistopic_obj.cell_data['FRIP'].median()])
-summary_df.at[0, 'Fraction duplicate reads '] = max([cistopic_obj.cell_data['Dupl_rate'].mean(),cistopic_obj.cell_data['Dupl_rate'].median()])
+summary_df.at[0, 'Fraction duplicate reads'] = max([cistopic_obj.cell_data['Dupl_rate'].mean(),cistopic_obj.cell_data['Dupl_rate'].median()])
 summary_df.to_csv("/root/Statistics/summary.csv", header=True, index= False)
 print(f"Output written to summary.csv")
 
