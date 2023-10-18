@@ -265,6 +265,8 @@ def Statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile,
 #    outdir = Path("chromap_output/").resolve()
 #    os.mkdir(outdir)
 
+    
+
     bc1 = Path(f"{work_dir}/bc1.txt").resolve()
     bc2 = Path(f"{work_dir}/bc2.txt").resolve()
     bc_freq_filtered = Path(f"{work_dir}/bc_freq_filtered.txt").resolve()
@@ -273,6 +275,14 @@ def Statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile,
     whitelist =  Path(f"{barcode_file.value}").resolve()
     peak_file = Path(f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak").resolve()
     h5_file = Path(f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_raw_peak_bc_matrix.h5").resolve()
+    
+    positions_paths = {
+    "x50"     : "latch://13502.account/spatials/x50_all_tissue_positions_list.csv",
+    "x50_old" : "latch://13502.account/spatials/x50-old_tissue_positions_list.csv",
+    "x96"     : "latch://13502.account/spatials/x96_all_tissue_positions_list.csv"
+    }
+    positions_path = LatchFile(positions_paths[barcode_file.name])
+    positions_file = Path(positions_path.local_path).resolve()
 
     subprocess.run([
     "echo",
@@ -369,6 +379,8 @@ def Statistics(r2: LatchFile,frag: LatchFile, bed: LatchFile,logfile: LatchFile,
 #                  outdir,
                   "-v",
                   open(Path("version").resolve(), 'r').read(),
+                  "-p",
+                  positions_file
         ]
 
         subprocess.run(_bc_cmd)
@@ -594,9 +606,21 @@ LaunchPlan(
 )
 
 if __name__ == '__main__':
-    lims_task(
-        results_dir=LatchDir("latch://13502.account/chromap_outputs/D00000_NG00000/Statistics/"),
-        run_id="test_NG02101",
-        upload=True,
-        ng_id="NG02101"
+
+    r2 = LatchFile(
+        "latch://13502.account/chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz"
+    )
+    species = LatchDir("latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
+    bed = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
+    frag = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/fragments.tsv.gz")
+    logfile = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/chromap_log.txt")
+
+    Statistics(
+        r2=r2,
+        species=species,
+        run_id="test",
+        barcode_file=BarcodeFile.x50,
+        bed=bed,
+        frag=frag,
+        logfile=logfile
     )
