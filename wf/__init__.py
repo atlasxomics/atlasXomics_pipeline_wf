@@ -4,6 +4,7 @@
 import glob
 import logging
 import os
+import re
 import subprocess
 
 from enum import Enum
@@ -319,28 +320,23 @@ def statistics(
         process2.wait()
         process4.wait()
 
-        if (glob.glob(f"{species.local_path}/*.index")[0]
-                .split("/")[-1].split("_")[0] == 'GRCm38'):
-            genome = 'mm'
-        elif (glob.glob(f"{species.local_path}/*.index")[0]
-                .split("/")[-1].split("_")[0] == 'GRCh38'):
-            genome = 'hs'
-        else:
-            genome = 'rnor6'
+        # Extract genome name from local genome ref dir
+        try:
+            genome = re.search(
+                '[A-Z]{1}.*[0-9]{1}',
+                species.local_path
+            ).group()
+        except AttributeError:
+            raise Exception(
+                'Genome name ([A-Z]...[0-9]) not found in ref dir.'
+            )
 
-        if genome == 'mm':
-            chrsize = Path("mm10_chrom_sizes.txt").resolve()
-        elif genome == 'hs':
-            chrsize = Path("hg38_chrom_sizes.txt").resolve()
-        else:
-            chrsize = Path("rn6_chrom_sizes.txt").resolve()
-
-        if genome == 'mm':
-            black_lst = Path("blacklist/mm10-blacklist.v2.bed").resolve()
-        elif genome == 'hs':
-            black_lst = Path("blacklist/hg38-blacklist.v2.bed").resolve()
-        else:
-            black_lst = None
+        # Assign genome metadata
+        genome_dict = {
+            "GRCh38": ["hs", "hg38_chrom_sizes.txt", "blacklist/hg38-blacklist.v2.bed"],
+            "GRCm38": ["mm", "mm10_chrom_sizes.txt", "blacklist/mm10-blacklist.v2.bed"],
+            "Rnor6": ["rnor6", "rn6_chrom_sizes.txt", None]
+        }
 
         _bc_cmd = [
             "python",
@@ -360,11 +356,11 @@ def statistics(
             "-i",
             run_id,
             "-g",
-            genome,
+            genome_dict[genome][0],
             "-c",
-            chrsize,
+            Path(genome_dict[genome][1]).resolve(),
             "-k",
-            black_lst,
+            Path(genome_dict[genome][2]).resolve(),
             "-w",
             whitelist,
             "-l",
