@@ -448,7 +448,7 @@ metadata = LatchMetadata(
     repository="https://github.com/atlasxomics/atlasXomics_pipeline_wf",
     parameters={
         "species": LatchParameter(
-            display_name="genome chromap index and fasta files Directory",
+            display_name="Chromap genome directory",
             description="Select reference genome for chromap alignment. Make \
                     sure to use right directory, eg. \
                     '/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0'",
@@ -539,22 +539,36 @@ def total_wf(
     upload_to_slims: bool,
     barcode_file: BarcodeFile = BarcodeFile.x50,
 ) -> List[Union[LatchDir, LatchFile]]:
-    """Pipeline for processing Spatial Whole Transcriptome data generated via
-    DBiT-seq.
+    """Workflow for processing epigenomic data generated via DBiT-seq
 
-    Whole Transcriptome
+    ATX epigenomic preprocessing
     ----
+    The ATX epigenomic preprocessing workflow requires the barcoding schema
+    described in [Zhang et al. 2023](https://www.nature.com/articles/s41586-023-05795-1#MOESM1)
+    for Illumina short-read sequencing:
+    - read1: genomic sequence
+    - read2: linker1 | barcodeA | linker2 | barcodeB | genomic sequence
 
-    Process data from DBiT-seq experiments for spatially-resolved epigenomics:
+    The workflow is comprised of the following steps:
 
-    > See Deng, Y. et al 2022.
+    1. Filter reads on read2 ligation linker sequences with
+    bbduk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/).
+        1. reads with >3 mismatches in the ligation linker1 are removed
+        from analysis
+        2. reads with >3 mismatches in the ligation linker2 are removed
+        from analysis
 
-    # Steps
+    2. Perform sequence alignment with [Chromap](https://github.com/haowenz/chromap).
+        - Chromap will process barcodes from fastq_R2.gz and align reads of both
+        fastq_R1.gz and fastq_R2.gz files. The result is a fragment file which
+        can be used for downstream analysis by [ArchR](https://www.archrproject.com/)
+        or [Signac](https://stuartlab.org/signac/).
 
-    * filter read2 on linker 1 identify via bbduk
-    * filter read2 on linker 2 identify via bbduk
-    * extract barcode (new read2) from read2
-    * run chromap alignment and get fragment file
+    3. Generate quality control metrics (ie. FRIP, TSS score) and peak
+    .bed/.h5 files using the [pycisTopic](https://github.com/aertslab/pycisTopic)package.
+
+    Questions? Comments?  Contact support@atlasxomics.com or post in the
+    AtlasXomics [Discord](https://discord.com/channels/1004748539827597413/1005222888384770108).
     """
 
     filtered_r1, filtered_r2, _, _ = filtering(
