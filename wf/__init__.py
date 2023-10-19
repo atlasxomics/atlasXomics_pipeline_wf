@@ -4,7 +4,6 @@
 import glob
 import logging
 import os
-import re
 import subprocess
 
 from enum import Enum
@@ -272,9 +271,9 @@ def statistics(
     peak_file = Path(f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak").resolve()
 
     positions_paths = {
-        "x50"     : "latch:///spatials/x50_all_tissue_positions_list.csv",
-        "x50_old" : "latch:///spatials/x50-old_tissue_positions_list.csv",
-        "x96"     : "latch:///spatials/x96_all_tissue_positions_list.csv"
+        "x50"     : "latch://13502.account/spatials/x50_all_tissue_positions_list.csv",
+        "x50_old" : "latch://13502.account/spatials/x50-old_tissue_positions_list.csv",
+        "x96"     : "latch://13502.account/spatials/x96_all_tissue_positions_list.csv"
     }
     positions_path = LatchFile(positions_paths[barcode_file.name])
     positions_file = Path(positions_path.local_path).resolve()
@@ -321,15 +320,8 @@ def statistics(
         process4.wait()
 
         # Extract genome name from local genome ref dir
-        try:
-            genome = re.search(
-                '[A-Z]{1}.*[0-9]{1}',
-                species.local_path
-            ).group()
-        except AttributeError:
-            raise Exception(
-                'Genome name ([A-Z]...[0-9]) not found in ref dir.'
-            )
+        genome_id = (glob.glob(f"{species.local_path}/*.fa")[0]
+                     .split("/")[-1].split("_")[0])
 
         # Assign genome metadata
         genome_dict = {
@@ -356,11 +348,11 @@ def statistics(
             "-i",
             run_id,
             "-g",
-            genome_dict[genome][0],
+            genome_dict[genome_id][0],
             "-c",
-            Path(genome_dict[genome][1]).resolve(),
+            Path(genome_dict[genome_id][1]).resolve(),
             "-k",
-            Path(genome_dict[genome][2]).resolve(),
+            Path(genome_dict[genome_id][2]).resolve(),
             "-w",
             whitelist,
             "-l",
@@ -382,7 +374,7 @@ def statistics(
             '/root/peak_files.R',
             frag.local_path,
             peak_file,
-            genome,
+            genome_dict[genome_id][0],
             run_id,
         ]
 
@@ -607,26 +599,26 @@ def total_wf(
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
 
-LaunchPlan(
-    total_wf,
-    "default",
-    {
-        "r1" : LatchFile("latch:///noori/coProf/cp1.100cov.fq.gz"),
-        "r2" : LatchFile("latch:///noori/coProf/cp2.100cov.fq.gz"),
-        "run_id" : "ds_D01033_NG01681",
-        "skip1" : False,
-        "skip2" : False,
-        "species" : LatchDir(
-            "latch:///Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0"
-        )
-    },
-)
+# LaunchPlan(
+#     total_wf,
+#     "default",
+#     {
+#         "r1" : LatchFile("latch:///noori/coProf/cp1.100cov.fq.gz"),
+#         "r2" : LatchFile("latch:///noori/coProf/cp2.100cov.fq.gz"),
+#         "run_id" : "ds_D01033_NG01681",
+#         "skip1" : False,
+#         "skip2" : False,
+#         "species" : LatchDir(
+#             "latch:///Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0"
+#         )
+#     },
+# )
 
 if __name__ == '__main__':
 
-    r2 = LatchFile("latch:///chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz")
-    species = LatchDir("latch:///Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
-    bed = LatchFile("latch:///chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
+    r2 = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz")
+    species = LatchDir("latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
+    bed = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
     frag = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/fragments.tsv.gz")
     logfile = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/chromap_log.txt")
 
