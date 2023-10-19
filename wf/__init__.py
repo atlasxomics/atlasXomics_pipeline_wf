@@ -13,6 +13,7 @@ from typing import List, Optional, Union, Tuple
 from latch import large_task, small_task, workflow
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
+from latch.registry.table import Table
 from latch.types import (
     LatchAuthor,
     LatchDir,
@@ -430,6 +431,44 @@ def lims_task(
     return results_dir
 
 
+@small_task(retries=0)
+def upload_latch_registry(
+    run_id: str,
+    r1: LatchFile,
+    r2: LatchFile,
+    chromap_frag: LatchFile,
+    results_dir: LatchDir,
+    table_id: str = "761"
+):
+    table = Table(table_id)
+
+    prefix = f"{results_dir.remote_path}/"
+
+    peaks_bed = f"{prefix}{run_id}_peaks.bed"
+    raw_peaks_bc_matrix_h5 = f"{prefix}{run_id}_raw_peak_bc_matrix.h5"
+    single_cell_file = f"{prefix}/singlecell.csv"
+
+    fragments_file_tbi = f"{chromap_frag.remote_path}.tbi"
+
+    with table.update() as updater:
+        try:
+            updater.upsert_record(
+                run_id,
+                fastq_read_1=r1,
+                fastq_read_2=r2,
+                fragments_file=chromap_frag,
+                peaks_bed=LatchFile(peaks_bed),
+                fragment_file_tbi=LatchFile(fragments_file_tbi),
+                raw_peaks_bc_matrix_h5=LatchFile(raw_peaks_bc_matrix_h5),
+                single_cell_file=LatchFile(single_cell_file)
+            )
+        except TypeError:
+            logging.warning(f"No table with id {table_id} found.")
+            return
+        finally:
+            return
+
+
 metadata = LatchMetadata(
     display_name="ATX epigenomic preprocessing",
     author=LatchAuthor(
@@ -515,6 +554,12 @@ metadata = LatchMetadata(
                 )
             ]
         ),
+        "table_id": LatchParameter(
+            display_name="Registry Table ID",
+            description="Provide the ID of the Registry table. Files that \
+                        will be populated in the table are: singlecell.csv, \
+                        fragments.tsv.gz, and summary.csv"
+        )
     },
 )
 
@@ -528,8 +573,9 @@ def total_wf(
     skip2: bool,
     species: LatchDir,
     ng_id: Optional[str],
-    upload_to_slims: bool,
     barcode_file: BarcodeFile = BarcodeFile.x50,
+    upload_to_slims: bool = False,
+    table_id: str = "761"
 ) -> List[Union[LatchDir, LatchFile]]:
     """Workflow for processing epigenomic data generated via DBiT-seq
 
@@ -594,6 +640,15 @@ def total_wf(
         run_id=run_id,
         upload=upload_to_slims,
         ng_id=ng_id
+    )
+
+    upload_latch_registry(
+        run_id=run_id,
+        r1=r2,
+        r2=r1,
+        chromap_frag=chromap_frag,
+        results_dir=reports,
+        table_id=table_id
     )
 
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
