@@ -104,21 +104,21 @@ chromsizes['Chromosome'] = [chromsizes['Chromosome'][x].split('_')[1] if len(chr
 chromsizes=pr.PyRanges(chromsizes)
 
 
-bw_paths, bed_paths = export_pseudobulk(input_data = cell_data,
-                 variable = 'variable',
-                 sample_id_col = 'Sample',
-                 chromsizes = chromsizes,
-                 bed_path = work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bed_files/',
-                 bigwig_path = work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bw_files/',
-                 path_to_fragments = fragments_dict,
-                 n_cpu =20, #sometimes increasing n_cpu > 1 doesn't produce bed files. ray memory Error happens
-                 normalize_bigwig = True,
-                 remove_duplicates = True,
-                 _temp_dir = tmp_dir + 'ray_spill', #tmp dir must not be too long
-                 split_pattern = '___',
-                 use_polars = False
-                 
-                                       ) 
+bw_paths, bed_paths = export_pseudobulk(
+    input_data=cell_data,
+    variable='variable',
+    sample_id_col='Sample',
+    chromsizes=chromsizes,
+    bed_path=work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bed_files/',
+    bigwig_path=work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bw_files/',
+    path_to_fragments=fragments_dict,
+    n_cpu=77,  # sometimes increasing n_cpu > 1 doesn't produce bed files. ray memory Error happens
+    normalize_bigwig=True,
+    remove_duplicates=True,
+    _temp_dir=tmp_dir + 'ray_spill',  # tmp dir must not be too long
+    split_pattern='___',
+    use_polars=False
+) 
 
 with open(work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bed_files/bed_paths.pkl', 'wb') as f:
   pickle.dump(bed_paths, f)
@@ -133,24 +133,26 @@ bed_paths = pickle.load(infile)
 infile.close()
 
 
-macs_path='/usr/local/bin/macs2'
+macs_path = '/usr/local/bin/macs2'
 
 outdir = work_dir + '/scATAC/consensus_peak_calling/MACS/'
 # Run peak calling
-narrow_peaks_dict = peak_calling(macs_path,
-                                 bed_paths,
-                                 outdir,
-                                 genome_size=genome,
-                                 n_cpu=20,
-                                 input_format='BEDPE',
-                                 shift=73, 
-                                 ext_size=146,
-                                 keep_dup = 'all',
-                                 q_value = 0.05,
-                                 _temp_dir = tmp_dir + 'ray_spill')
+narrow_peaks_dict = peak_calling(
+    macs_path,
+    bed_paths,
+    outdir,
+    genome_size=genome,
+    n_cpu=77,
+    input_format='BEDPE',
+    shift=73,
+    ext_size=146,
+    keep_dup='all',
+    q_value=0.05,
+    _temp_dir=tmp_dir + 'ray_spill'
+)
 
-peak_half_width=250
-consensus_peaks=get_consensus_peaks(narrow_peaks_dict, peak_half_width, chromsizes=chromsizes, path_to_blacklist=black_lst)
+peak_half_width = 250
+consensus_peaks = get_consensus_peaks(narrow_peaks_dict, peak_half_width, chromsizes=chromsizes, path_to_blacklist=black_lst)
 
 
 # Write to bed
@@ -175,31 +177,27 @@ annot['Chromosome/scaffold name'] = annot['Chromosome/scaffold name'].str.replac
 annot.columns=['Chromosome', 'Start', 'Strand', 'Gene', 'Transcript_type']
 annot = annot[annot.Transcript_type == 'protein_coding']
 
-
-
-
- 
 path_to_regions = {run_id: work_dir + '/scATAC/consensus_peak_calling/consensus_regions.bed'}
 
 sys.stderr = open(os.devnull, "w")  # silence stderr
 metadata_bc, profile_data_dict = compute_qc_stats(
-                fragments_dict = fragments_dict,
-                tss_annotation = annot,
-                stats=['barcode_rank_plot', 'duplicate_rate', 'insert_size_distribution', 'profile_tss', 'frip'],
-                label_list = None,
-                path_to_regions = path_to_regions,
-                n_cpu = 20,
-                valid_bc = None,
-                n_frag = 100,
-                n_bc = None,
-                tss_flank_window = 1000,
-                tss_window = 50,
-                tss_minimum_signal_window = 100,
-                tss_rolling_window = 10,
-                remove_duplicates = True,
-                _temp_dir = os.path.join(tmp_dir + 'ray_spill'),
-                use_polars = False  # True gives TypeError: __init__() got an unexpected keyword argument 'encoding'
-
+    fragments_dict=fragments_dict,
+    tss_annotation=annot,
+    stats=['barcode_rank_plot', 'duplicate_rate', 'insert_size_distribution',
+           'profile_tss', 'frip'],
+    label_list=None,
+    path_to_regions=path_to_regions,
+    n_cpu=77,
+    valid_bc=None,
+    n_frag=100,
+    n_bc=None,
+    tss_flank_window=1000,
+    tss_window=50,
+    tss_minimum_signal_window=100,
+    tss_rolling_window=10,
+    remove_duplicates=True,
+    _temp_dir=os.path.join(tmp_dir + 'ray_spill'),
+    use_polars=False  # True gives TypeError: __init__() got an unexpected keyword argument 'encoding'
 )
 
 
@@ -305,26 +303,32 @@ with open(work_dir +'/scATAC/quality_control/bc_passing_filters.pkl', 'wb') as f
 metadata_bc = pickle.load(open(os.path.join(work_dir + '/scATAC/quality_control/metadata_bc.pkl'), 'rb'))
 
 
-#note we use twice the same regions!
-path_to_regions = {run_id: os.path.join(work_dir + '/scATAC/consensus_peak_calling/consensus_regions.bed')
-                  }
-path_to_blacklist=black_lst
+# note we use twice the same regions!
+path_to_regions = {
+    run_id: os.path.join(work_dir + '/scATAC/consensus_peak_calling/consensus_regions.bed')
+}
+
+path_to_blacklist = black_lst
 
 metadata_bc = pickle.load(open(os.path.join(work_dir + '/scATAC/quality_control/metadata_bc.pkl'), 'rb'))
 bc_passing_filters = pickle.load(open(os.path.join(work_dir + '/scATAC/quality_control/bc_passing_filters.pkl'), 'rb'))
 
-cistopic_obj_list=[create_cistopic_object_from_fragments(path_to_fragments=fragments_dict[key],
-                                               path_to_regions=path_to_regions[key],
-                                               path_to_blacklist=black_lst,
-                                               metrics=metadata_bc[key],
-                                               valid_bc=bc_passing_filters[key],
-                                               n_cpu=20,
-                use_polars=False,# True gives TypeError: __init__() got an unexpected keyword argument 'encoding'
-                                               project=key) for key in fragments_dict.keys()]
+cistopic_obj_list = [
+    create_cistopic_object_from_fragments(
+        path_to_fragments=fragments_dict[key],
+        path_to_regions=path_to_regions[key],
+        path_to_blacklist=black_lst,
+        metrics=metadata_bc[key],
+        valid_bc=bc_passing_filters[key],
+        n_cpu=77,
+        use_polars=False,  # True gives TypeError: __init__() got an unexpected keyword argument 'encoding'
+        project=key)
+    for key in fragments_dict.keys()
+]
 
 cistopic_obj = merge(cistopic_obj_list)
 
-cistopic_obj.cell_data.to_csv(work_dir + '/cistopic_cell_data.csv', sep = ",", header=True)
+cistopic_obj.cell_data.to_csv(work_dir + '/cistopic_cell_data.csv', sep=",", header=True)
 
 
 df = pd.read_csv(bc2, names=['bc2'])
