@@ -644,20 +644,20 @@ def total_wf(
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
 
-# LaunchPlan(
-#     total_wf,
-#     "default",
-#     {
-#         "r1" : LatchFile("latch:///noori/coProf/cp1.100cov.fq.gz"),
-#         "r2" : LatchFile("latch:///noori/coProf/cp2.100cov.fq.gz"),
-#         "run_id" : "ds_D01033_NG01681",
-#         "skip1" : False,
-#         "skip2" : False,
-#         "species" : LatchDir(
-#             "latch:///Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0"
-#         )
-#     },
-# )
+LaunchPlan(
+    total_wf,
+    "demo",
+    {
+        "r1": LatchFile("latch://13502.account/downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R1_001.fastq.gz"),
+        "r2": LatchFile("latch://13502.account/downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
+        "run_id": "demo",
+        "skip1": False,
+        "skip2": False,
+        "species": LatchDir(
+            "latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCh38_1.1.0"
+        )
+    }
+)
 
 if __name__ == '__main__':
 
