@@ -266,10 +266,18 @@ def statistics(
 
     bc1 = Path(f"{work_dir}/bc1.txt").resolve()
     bc2 = Path(f"{work_dir}/bc2.txt").resolve()
-    bc_freq_filtered = Path(f"{work_dir}/bc_freq_filtered.txt").resolve()
-    bed_bc_freq = Path(f"{work_dir}/bed_bc_freq.txt").resolve()
     whitelist = Path(f"{barcode_file.value}").resolve()
     peak_file = Path(f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak").resolve()
+    
+    tmp1 = Path(f"{work_dir}/tmp1.txt").resolve()
+    tmp2 = Path(f"{work_dir}/tmp2.txt").resolve()
+    fastq_bc_inlst_freq = Path(f"{work_dir}/fastq_bc_inlst_freq.txt").resolve()
+    chromap_bc_inlst_freq = Path(f"{work_dir}/chromap_bc_inlst_freq.txt").resolve()
+    singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
+    cistopic = Path(f"{work_dir}/cistopic_cell_data.csv").resolve()
+
+
+
 
     positions_paths = {
         "x50"     : "latch://13502.account/spatials/x50_all_tissue_positions_list.csv",
@@ -279,73 +287,22 @@ def statistics(
     positions_path = LatchFile(positions_paths[barcode_file.name])
     positions_file = Path(positions_path.local_path).resolve()
 
-    subprocess.run(
-        ["echo",
-         str("find number of read per barcode from read_R2.fq.gz file!!")]
-    )
-
-    command1 = ['zcat', r2.local_path]
-    command2 = ['awk "NR%4==2"']
-    command3 = ['cut', '-c', '61-68']
-    command4 = ['cut', '-c', '23-30']
-
-    # Open the output file for writing
-    with open(str(bc1), 'w') as a, open(str(bc2), 'w') as b:
-
-        process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
-
-        process2 = subprocess.Popen(
-            command2, stdin=process1.stdout, stdout=subprocess.PIPE, shell=True
-        )
-        process1.stdout.close()
-
-        process3 = subprocess.Popen(command3, stdin=process2.stdout, stdout=a)
-        process2.stdout.close()
-
-        process1.wait()
-        process2.wait()
-        process3.wait()
-
-        process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
-
-        process2 = subprocess.Popen(
-            command2, stdin=process1.stdout, stdout=subprocess.PIPE, shell=True
-        )
-        process1.stdout.close()
-
-        process4 = subprocess.Popen(command4, stdin=process2.stdout, stdout=b)
-        process2.stdout.close()
-
-        process1.wait()
-        process2.wait()
-        process4.wait()
-
-        # Extract genome name from local genome ref dir
-        genome_id = (glob.glob(f"{species.local_path}/*.fa")[0]
+    # Extract genome name from local genome ref dir
+    genome_id = (glob.glob(f"{species.local_path}/*.fa")[0]
                      .split("/")[-1].split("_")[0])
 
-        # Assign genome metadata
-        genome_dict = {
+    # Assign genome metadata
+    genome_dict = {
             "GRCh38": ["hs", "hg38_chrom_sizes.txt", "blacklist/hg38-blacklist.v2.bed"],
             "GRCm38": ["mm", "mm10_chrom_sizes.txt", "blacklist/mm10-blacklist.v2.bed"],
             "Rnor6": ["rnor6", "rn6_chrom_sizes.txt", None]
-        }
+    }
 
-        _bc_cmd = [
+    _sc_cmd = [
             "python",
-            "qc.py",
-            "-bc1",
-            str(bc1),
-            "-bc2",
-            str(bc2),
-            "-bcff",
-            str(bc_freq_filtered),
-            "-bed",
-            bed.local_path,
+            "summary.py",
             "-f",
             frag.local_path,
-            "-bedbf",
-            str(bed_bc_freq),
             "-i",
             run_id,
             "-g",
@@ -366,25 +323,55 @@ def statistics(
             open(Path("version").resolve(), 'r').read(),
             "-p",
             positions_file
-        ]
+    ]
 
-        subprocess.run(_bc_cmd)
+    subprocess.run(_sc_cmd)
 
-        _report_cmd = [
+    _bc_cmd = [
+            "python",
+            "singlecell.py",
+            "-r2",
+            r2.local_path,
+            "-bc1",
+            str(bc1),
+            "-bc2",
+            str(bc2),
+            "-bed",
+            bed.local_path,
+            "-w",
+            whitelist,
+            "-tmp1",
+            str(tmp1),
+            "-tmp2",
+            str(tmp2),
+            "-fbif",
+            str(fastq_bc_inlst_freq),
+            "-cbif",
+            str(chromap_bc_inlst_freq),
+            "-sc",
+            str(singlecell),
+            "-cis",
+            str(cistopic)
+
+    ]
+
+    subprocess.run(_bc_cmd)
+
+    _report_cmd = [
             'Rscript',
             '/root/peak_files.R',
             frag.local_path,
             peak_file,
             genome_dict[genome_id][0],
             run_id,
-        ]
+    ]
 
-        subprocess.run(_report_cmd)
+    subprocess.run(_report_cmd)
 
-        return LatchDir(
+    return LatchDir(
             str(work_dir),
             f"latch:///chromap_outputs/{run_id}/Statistics"
-        )
+    )
 
 
 @small_task(retries=0)

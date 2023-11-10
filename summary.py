@@ -3,6 +3,8 @@ import gzip
 import pickle
 import logging
 import argparse
+import matplotlib.pyplot as plt
+import numpy as np
 import requests
 import pandas as pd
 import pyranges as pr
@@ -13,15 +15,12 @@ from pycisTopic.cistopic_class import *
 from pycisTopic.pseudobulk_peak_calling import *
 from pycisTopic.pseudobulk_peak_calling import *
 from pycisTopic.iterative_peak_calling import *
+from pathlib import Path
+from typing import List, Tuple, Union
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument('-bc1', required=True)
-ap.add_argument('-bc2', required=True)
-ap.add_argument('-bcff', required=True)
-ap.add_argument('-bed', required=True)
 ap.add_argument('-f', required=True)
-ap.add_argument('-bedbf', required=True)
 ap.add_argument('-i', required=True)
 ap.add_argument('-g', required=True)
 ap.add_argument('-c', required=True)
@@ -30,17 +29,12 @@ ap.add_argument('-w', required=True)
 ap.add_argument('-l', required=True)
 ap.add_argument('-d', required=True)
 ap.add_argument('-t', required=True)
-#ap.add_argument('-otd', required=True)
+ap.add_argument('-p', required=True)
 ap.add_argument('-v', required=True)
  
 args = vars(ap.parse_args())
 
-bc1 = args['bc1']
-bc2 = args['bc2']
-bc_freq_filtered = args['bcff']
-bed = args['bed']
 fragment = args['f']
-bed_bc_freq = args['bedbf']
 run_id = args['i']
 genome = args['g']
 chrsize = args['c']
@@ -49,7 +43,7 @@ whitelist = args['w']
 logfile = args['l']
 work_dir = args['d']
 tmp_dir = args['t']
-#out_dir = args['otd']
+positions_file = args['p']
 version = args['v']
 
 
@@ -73,7 +67,6 @@ fragment_edited = work_dir + "/fragments_edited.tsv.gz"
 
 subset_df.to_csv(fragment_edited, index=False, compression='gzip', sep = "\t", header=None)
 
-print(f"Output written to '{work_dir} + singlecell.csv'")
 ###########################################################pycisTopic#############################################
 print('pycisTopic Starting ...')
 
@@ -98,21 +91,21 @@ chromsizes['Chromosome'] = [chromsizes['Chromosome'][x].split('_')[1] if len(chr
 chromsizes=pr.PyRanges(chromsizes)
 
 
-bw_paths, bed_paths = export_pseudobulk(input_data = cell_data,
-                 variable = 'variable',
-                 sample_id_col = 'Sample',
-                 chromsizes = chromsizes,
-                 bed_path = work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bed_files/',
-                 bigwig_path = work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bw_files/',
-                 path_to_fragments = fragments_dict,
-                 n_cpu =20, #sometimes increasing n_cpu > 1 doesn't produce bed files. ray memory Error happens
-                 normalize_bigwig = True,
-                 remove_duplicates = True,
-                 _temp_dir = tmp_dir + 'ray_spill', #tmp dir must not be too long
-                 split_pattern = '___',
-                 use_polars = False
-                 
-                                       ) 
+bw_paths, bed_paths = export_pseudobulk(
+    input_data=cell_data,
+    variable='variable',
+    sample_id_col='Sample',
+    chromsizes=chromsizes,
+    bed_path=work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bed_files/',
+    bigwig_path=work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bw_files/',
+    path_to_fragments=fragments_dict,
+    n_cpu=77,  # sometimes increasing n_cpu > 1 doesn't produce bed files. ray memory Error happens
+    normalize_bigwig=True,
+    remove_duplicates=True,
+    _temp_dir=tmp_dir + 'ray_spill',  # tmp dir must not be too long
+    split_pattern='___',
+    use_polars=False
+) 
 
 with open(work_dir + '/scATAC/consensus_peak_calling/pseudobulk_bed_files/bed_paths.pkl', 'wb') as f:
   pickle.dump(bed_paths, f)
@@ -127,24 +120,26 @@ bed_paths = pickle.load(infile)
 infile.close()
 
 
-macs_path='/usr/local/bin/macs2'
+macs_path = '/usr/local/bin/macs2'
 
 outdir = work_dir + '/scATAC/consensus_peak_calling/MACS/'
 # Run peak calling
-narrow_peaks_dict = peak_calling(macs_path,
-                                 bed_paths,
-                                 outdir,
-                                 genome_size=genome,
-                                 n_cpu=20,
-                                 input_format='BEDPE',
-                                 shift=73, 
-                                 ext_size=146,
-                                 keep_dup = 'all',
-                                 q_value = 0.05,
-                                 _temp_dir = tmp_dir + 'ray_spill')
+narrow_peaks_dict = peak_calling(
+    macs_path,
+    bed_paths,
+    outdir,
+    genome_size=genome,
+    n_cpu=77,
+    input_format='BEDPE',
+    shift=73,
+    ext_size=146,
+    keep_dup='all',
+    q_value=0.05,
+    _temp_dir=tmp_dir + 'ray_spill'
+)
 
-peak_half_width=250
-consensus_peaks=get_consensus_peaks(narrow_peaks_dict, peak_half_width, chromsizes=chromsizes, path_to_blacklist=black_lst)
+peak_half_width = 250
+consensus_peaks = get_consensus_peaks(narrow_peaks_dict, peak_half_width, chromsizes=chromsizes, path_to_blacklist=black_lst)
 
 
 # Write to bed
@@ -169,31 +164,27 @@ annot['Chromosome/scaffold name'] = annot['Chromosome/scaffold name'].str.replac
 annot.columns=['Chromosome', 'Start', 'Strand', 'Gene', 'Transcript_type']
 annot = annot[annot.Transcript_type == 'protein_coding']
 
-
-
-
- 
 path_to_regions = {run_id: work_dir + '/scATAC/consensus_peak_calling/consensus_regions.bed'}
 
 sys.stderr = open(os.devnull, "w")  # silence stderr
 metadata_bc, profile_data_dict = compute_qc_stats(
-                fragments_dict = fragments_dict,
-                tss_annotation = annot,
-                stats=['barcode_rank_plot', 'duplicate_rate', 'insert_size_distribution', 'profile_tss', 'frip'],
-                label_list = None,
-                path_to_regions = path_to_regions,
-                n_cpu = 20,
-                valid_bc = None,
-                n_frag = 100,
-                n_bc = None,
-                tss_flank_window = 1000,
-                tss_window = 50,
-                tss_minimum_signal_window = 100,
-                tss_rolling_window = 10,
-                remove_duplicates = True,
-                _temp_dir = os.path.join(tmp_dir + 'ray_spill'),
-                use_polars = False  # True gives TypeError: __init__() got an unexpected keyword argument 'encoding'
-
+    fragments_dict=fragments_dict,
+    tss_annotation=annot,
+    stats=['barcode_rank_plot', 'duplicate_rate', 'insert_size_distribution',
+           'profile_tss', 'frip'],
+    label_list=None,
+    path_to_regions=path_to_regions,
+    n_cpu=77,
+    valid_bc=None,
+    n_frag=100,
+    n_bc=None,
+    tss_flank_window=1000,
+    tss_window=50,
+    tss_minimum_signal_window=100,
+    tss_rolling_window=10,
+    remove_duplicates=True,
+    _temp_dir=os.path.join(tmp_dir + 'ray_spill'),
+    use_polars=False  # True gives TypeError: __init__() got an unexpected keyword argument 'encoding'
 )
 
 
@@ -299,58 +290,36 @@ with open(work_dir +'/scATAC/quality_control/bc_passing_filters.pkl', 'wb') as f
 metadata_bc = pickle.load(open(os.path.join(work_dir + '/scATAC/quality_control/metadata_bc.pkl'), 'rb'))
 
 
-#note we use twice the same regions!
-path_to_regions = {run_id: os.path.join(work_dir + '/scATAC/consensus_peak_calling/consensus_regions.bed')
-                  }
-path_to_blacklist=black_lst
+# note we use twice the same regions!
+path_to_regions = {
+    run_id: os.path.join(work_dir + '/scATAC/consensus_peak_calling/consensus_regions.bed')
+}
+
+path_to_blacklist = black_lst
 
 metadata_bc = pickle.load(open(os.path.join(work_dir + '/scATAC/quality_control/metadata_bc.pkl'), 'rb'))
 bc_passing_filters = pickle.load(open(os.path.join(work_dir + '/scATAC/quality_control/bc_passing_filters.pkl'), 'rb'))
 
-cistopic_obj_list=[create_cistopic_object_from_fragments(path_to_fragments=fragments_dict[key],
-                                               path_to_regions=path_to_regions[key],
-                                               path_to_blacklist=black_lst,
-                                               metrics=metadata_bc[key],
-                                               valid_bc=bc_passing_filters[key],
-                                               n_cpu=20,
-                use_polars=False,# True gives TypeError: __init__() got an unexpected keyword argument 'encoding'
-                                               project=key) for key in fragments_dict.keys()]
+cistopic_obj_list = [
+    create_cistopic_object_from_fragments(
+        path_to_fragments=fragments_dict[key],
+        path_to_regions=path_to_regions[key],
+        path_to_blacklist=black_lst,
+        metrics=metadata_bc[key],
+        valid_bc=bc_passing_filters[key],
+        n_cpu=77,
+        use_polars=False,  # True gives TypeError: __init__() got an unexpected keyword argument 'encoding'
+        project=key)
+    for key in fragments_dict.keys()
+]
 
 cistopic_obj = merge(cistopic_obj_list)
 
-cistopic_obj.cell_data.to_csv(work_dir + '/cistopic_cell_data.csv', sep = ",", header=True)
+cistopic_obj.cell_data.to_csv(work_dir + '/cistopic_cell_data.csv', sep=",", header=True)
 
 
-df = pd.read_csv(bc2, names=['bc2'])
-df['bc1'] = pd.read_csv(bc1, names=['bc1'])
-df['bc'] = df['bc2'] + df['bc1']
-with open(whitelist, 'r') as file:
-     subset_values = [line.strip() for line in file]
-subset_df = df[df['bc'].isin(subset_values)]
-subset_df['bc'].value_counts().to_csv(bc_freq_filtered, sep='\t', header=False)
-df_bed = pd.read_table(bed, sep="\t", header=None)
-df_bed.columns = ['chr', 'start', 'end', 'bc','freq']
-df_bed['bc'].value_counts().to_csv(bed_bc_freq, sep='\t', header=False)
-
-singlecell_df = pd.concat([subset_df['bc'].value_counts(), df_bed['bc'].value_counts()], axis=1).dropna()
-singlecell_df.columns=['total','passed_filters']
-singlecell_df.index= singlecell_df.index + "-1"
-cistopic_obj.cell_data.index = cistopic_obj.cell_data['barcode']
-singlecell_df= singlecell_df[singlecell_df.index.isin(cistopic_obj.cell_data.index)].reindex(cistopic_obj.cell_data.index)
-singlecell_df= pd.concat([singlecell_df,cistopic_obj.cell_data],axis=1)
-singlecell_df= singlecell_df.drop(['barcode'], axis=1)
 
 
-sum_row = singlecell_df.sum().to_frame().T
-sum_row.index = ["NO_BARCODE"]
-singlecell_df = pd.concat([sum_row, singlecell_df])
-singlecell_df.reset_index(drop=False, inplace=True)
-singlecell_df.rename(columns={'index': 'barcode'}, inplace=True)
-singlecell_df['sample_id'][0] = singlecell_df['sample_id'][1]
-singlecell_df.columns= singlecell_df.columns.str.replace('cisTopic_', '')
-singlecell_df.iloc[0, 3:] = '-'
-singlecell_df.to_csv("/root/Statistics/singlecell.csv", index= False, header=True)
-print("Output written to singlecell.csv")
 
 peak_file = pd.read_table(open(os.path.join(work_dir + f'/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak'), 'rb'), sep='\t', header=None)
 peak_file.columns=["chr","start","end","name","score","strand"
@@ -379,22 +348,165 @@ summary_df = pd.DataFrame(columns=['Sample ID'])
 summary_df.at[0, 'Sample ID'] = f"{run_id}"
 summary_df.at[0, 'Genome'] = genome
 summary_df.at[0, 'Pipeline version'] = "AtlasXomics-" + version
-summary_df.at[0, 'Fraction aligned reads '] = chromap_log_stats(logfile,"Number of uni-mappings") / chromap_log_stats(logfile,"Number of mappings")
-summary_df.at[0, 'Chromap input read pairs '] = singlecell_df['total'][0]
-summary_df.at[0, 'Fraction unaligned reads '] = 1-(chromap_log_stats(logfile,"Number of mapped reads") / chromap_log_stats(logfile,"Number of reads"))
-summary_df.at[0, 'Fraction reads with valid barcode '] = 1-(chromap_log_stats(logfile,"Number of corrected barcodes") / chromap_log_stats(logfile,"Number of barcodes in whitelist"))
+summary_df.at[0, 'Fraction aligned reads'] = chromap_log_stats(logfile,"Number of uni-mappings") / chromap_log_stats(logfile,"Number of mappings")
+#summary_df.at[0, 'Chromap input read pairs'] = "will be added later"
+summary_df.at[0, 'Fraction unaligned reads'] = 1-(chromap_log_stats(logfile,"Number of mapped reads") / chromap_log_stats(logfile,"Number of reads"))
+summary_df.at[0, 'Fraction reads with valid barcode'] = 1-(chromap_log_stats(logfile,"Number of corrected barcodes") / chromap_log_stats(logfile,"Number of barcodes in whitelist"))
 summary_df.at[0, 'Number of peaks'] = len(peak_file.index)
 summary_df.at[0, 'TSS_enrichment'] = max([cistopic_obj.cell_data['TSS_enrichment'].mean(),cistopic_obj.cell_data['TSS_enrichment'].median()])
 summary_df.at[0, 'FRIP'] = max([cistopic_obj.cell_data['FRIP'].mean(),cistopic_obj.cell_data['FRIP'].median()])
-summary_df.at[0, 'Fraction duplicate reads '] = max([cistopic_obj.cell_data['Dupl_rate'].mean(),cistopic_obj.cell_data['Dupl_rate'].median()])
+summary_df.at[0, 'Fraction duplicate reads'] = max([cistopic_obj.cell_data['Dupl_rate'].mean(),cistopic_obj.cell_data['Dupl_rate'].median()])
 summary_df.to_csv("/root/Statistics/summary.csv", header=True, index= False)
-print(f"Output written to summary.csv")
+print("Output written to summary.csv")
+
+print("Creating lane qc plot")
 
 
+def get_axis_avgs(
+   singlecell_path: Path,
+   positions_path: Path
+) -> pd.DataFrame:
+    """
+    Given singlecell.csv and barcode file, return pd.DataFrame with median
+    row and column counts for each lane.
+    """
+
+    sc = pd.read_csv(singlecell_path)
+    sc = sc[sc["barcode"] != "NO_BARCODE"]
+    sc["barcode"] = sc["barcode"].apply(lambda x: x.strip("-1"))
+
+    positions = pd.read_csv(positions_path, header=None)
+    positions.columns = ["barcode", "on_tissue", "row", "column"]
+
+    merged = pd.merge(sc, positions)
+
+    avgs = [merged.groupby([axis]).median(numeric_only=True)["passed_filters"]
+            for axis in ["row", "column"]]
+
+    df = pd.merge(avgs[0], avgs[1], right_index=True, left_index=True)
+    df.columns = ["row_avg", "col_avg"]
+    df.index.name = None
+
+    return df
 
 
-print("guess what! statistcs calculations successfully finished!!")
+def get_upper_bounds(
+    avgs: Union[pd.Series, List[float]],
+    sigma: int = 1
+) -> Tuple[float, float]:
+    """
+    Given pd.DataFrame with median row and column counts for each lane,
+    return values above with a lane average is considered an outlier for
+    """
 
+    mean = np.mean(avgs)
+    std = np.std(avgs)
+
+    row, col = mean + sigma * std
+
+    return row, col
+
+
+def get_outliers(
+    avgs: Union[pd.Series, List[float]],
+    row_bound: float,
+    col_bound: float
+) -> pd.DataFrame:
+    """Add boolean column identifying outliers to lane averages;
+    merger with average to return a dataframe."""
+
+    row_outliers = avgs["row_avg"] > row_bound
+    col_outliers = avgs["col_avg"] > col_bound
+
+    avgs = avgs.merge(row_outliers, left_index=True, right_index=True)
+    avgs = avgs.merge(col_outliers, left_index=True, right_index=True)
+
+    avgs.columns = ["row_avg", "col_avg", "row_outlier", "col_outlier"]
+
+    return avgs
+
+
+def plotting_task(
+    singlecell_path: Path,
+    positions_path: Path
+):
+    """Save a barplot.pdf containing row/column medians with outlier
+    highlighted at sigma 1 and 2"""
+
+    dfs = []
+    for sigma in [1, 2]:
+        avgs = get_axis_avgs(singlecell_path, positions_path)
+        row_bound, col_bound = get_upper_bounds(avgs, sigma=sigma)
+        df = get_outliers(avgs, row_bound, col_bound)
+        dfs.append((sigma, df))
+
+    plt.rc("figure", figsize=(15, 10))
+
+    fig, ax = plt.subplots(4, 1)
+    plt.subplots_adjust(wspace=0, hspace=0.7)
+
+    i = 0
+    for sigma, df in dfs:
+
+        row_x = df.index
+        row_y = df["row_avg"]
+        row_colors = df["row_outlier"]
+
+        ax[i].bar(    
+            [x + 1 for x in row_x[~row_colors]],
+            row_y[~row_colors],
+            color="blue",
+            edgecolor=(0, 0, 0),
+        )
+
+        ax[i].bar(    
+            [x + 1 for x in row_x[row_colors]],
+            row_y[row_colors],
+            color="red",
+            edgecolor=(0, 0, 0),
+            label="outliers"
+        )
+
+        ax[i].set_title(f"row medians (sigma={sigma})")
+        ax[i].set_ylabel("median frag counts")
+        ax[i].legend()
+
+        i += 1
+
+        col_x = df.index
+        col_y = df["col_avg"]
+        col_colors = df["col_outlier"]
+
+        ax[i].bar(    
+            [x + 1 for x in col_x[~col_colors]],
+            col_y[~col_colors],
+            color="blue",
+            edgecolor=(0,0,0),
+        )
+
+        ax[i].bar(    
+            [x + 1 for x in col_x[col_colors]],
+            col_y[col_colors],
+            color="red",
+            edgecolor=(0, 0, 0),
+            label="outlier"
+        )
+
+        ax[i].set_title(f"column medians (sigma={sigma})")
+        ax[i].set_ylabel("median frag counts")
+        ax[i].legend()
+
+        xticks = [x + 1 for x in range(len(df.index))]
+        font_size = 5 if len(df.index) == 96 else 9
+        ax[i].set_xticks(xticks)
+        ax[i].set_xticklabels(xticks, fontsize=font_size)
+
+        i += 1
+
+    plt.savefig("/root/Statistics/lane_qc.pdf")
+
+
+plotting_task("/root/Statistics/singlecell.csv", positions_file)
 
 print(r"""
 

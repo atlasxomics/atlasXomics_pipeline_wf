@@ -40,11 +40,6 @@ file.copy(rawdata, dataPath, overwrite = TRUE)
 
 file.rename("/root/Statistics/sample_metrics.pdf","/root/Statistics/qc_plot.pdf")
 
-file.remove('/root/Statistics/bc_freq_filtered.txt')
-file.remove('/root/Statistics/bc1.txt')
-file.remove('/root/Statistics/bc2.txt')
-file.remove('/root/Statistics/bed_bc_freq.txt')
-file.remove('/root/Statistics/cistopic_cell_data.csv')
 file.remove('/root/Statistics/fragments_edited.tsv.gz')
 
 
@@ -195,3 +190,22 @@ write_dgCMatrix_h5(macs2_counts, cols_are = "sample_names", h5_target,ref_name =
 
 file.remove('/root/Statistics/fragments.tsv.gz')
 file.remove('/root/Statistics/fragments.tsv.gz.tbi')
+file.remove('/root/Statistics/tmp1.txt')
+file.remove('/root/Statistics/tmp2.txt')
+file.remove('/root/Statistics/bc1.txt')
+file.remove('/root/Statistics/bc2.txt')
+file.remove('/root/Statistics/fastq_bc_inlst_freq.txt')
+file.remove('/root/Statistics/chromap_bc_inlst_freq.txt')
+
+
+print(r"""
+
+    _     _    _             __  __                   _            
+   / \   | |_ | |  __ _  ___ \ \/ /  ___   _ __ ___  (_)  ___  ___ 
+  / _ \  | __|| | / _` |/ __| \  /  / _ \ | '_ ` _ \ | | / __|/ __|
+ / ___ \ | |_ | || (_| |\__ \ /  \ | (_) || | | | | || || (__ \__ \
+/_/   \_\ \__||_| \__,_||___//_/\_\ \___/ |_| |_| |_||_| \___||___/
+                                                                   
+                                                                                          
+ 
+ """)
