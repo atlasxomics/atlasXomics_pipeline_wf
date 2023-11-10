@@ -24,6 +24,7 @@ from latch.types import (
 )
 
 import wf.lims as lims
+from wf.outliers import plotting_task
 
 
 class BarcodeFile(Enum):
@@ -267,17 +268,16 @@ def statistics(
     bc1 = Path(f"{work_dir}/bc1.txt").resolve()
     bc2 = Path(f"{work_dir}/bc2.txt").resolve()
     whitelist = Path(f"{barcode_file.value}").resolve()
-    peak_file = Path(f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak").resolve()
-    
+    peak_file = Path(
+        f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak"
+    ).resolve()
+
     tmp1 = Path(f"{work_dir}/tmp1.txt").resolve()
     tmp2 = Path(f"{work_dir}/tmp2.txt").resolve()
     fastq_bc_inlst_freq = Path(f"{work_dir}/fastq_bc_inlst_freq.txt").resolve()
     chromap_bc_inlst_freq = Path(f"{work_dir}/chromap_bc_inlst_freq.txt").resolve()
     singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
     cistopic = Path(f"{work_dir}/cistopic_cell_data.csv").resolve()
-
-
-
 
     positions_paths = {
         "x50"     : "latch://13502.account/spatials/x50_all_tissue_positions_list.csv",
@@ -352,11 +352,14 @@ def statistics(
             str(singlecell),
             "-cis",
             str(cistopic)
-
     ]
 
     subprocess.run(_bc_cmd)
 
+    print("Creating lane qc plot!")
+    plotting_task(singlecell, positions_file)
+
+    print("Creating peak files!")
     _report_cmd = [
             'Rscript',
             '/root/peak_files.R',
