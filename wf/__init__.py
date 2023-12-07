@@ -280,7 +280,7 @@ def statistics(
     cistopic = Path(f"{work_dir}/cistopic_cell_data.csv").resolve()
 
     positions_paths = {
-        "x50"     : "latch://spatials/x50_all_tissue_positions_list.csv",
+        "x50"     : "latch:///spatials/x50_all_tissue_positions_list.csv",
         "x50_old" : "latch:///spatials/x50-old_tissue_positions_list.csv",
         "x96"     : "latch:///spatials/x96_all_tissue_positions_list.csv"
     }
@@ -643,36 +643,3 @@ def total_wf(
 
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
-
-LaunchPlan(
-    total_wf,
-    "demo",
-    {
-        "r1": LatchFile("latch://13502.account/downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R1_001.fastq.gz"),
-        "r2": LatchFile("latch://13502.account/downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
-        "run_id": "demo",
-        "skip1": False,
-        "skip2": False,
-        "species": LatchDir(
-            "latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCh38_1.1.0"
-        )
-    }
-)
-
-if __name__ == '__main__':
-
-    r2 = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz")
-    species = LatchDir("latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
-    bed = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
-    frag = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/fragments.tsv.gz")
-    logfile = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/chromap_log.txt")
-
-    statistics(
-        r2=r2,
-        species=species,
-        run_id="test",
-        barcode_file=BarcodeFile.x50,
-        bed=bed,
-        frag=frag,
-        logfile=logfile
-    )
