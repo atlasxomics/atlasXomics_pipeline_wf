@@ -280,9 +280,9 @@ def statistics(
     cistopic = Path(f"{work_dir}/cistopic_cell_data.csv").resolve()
 
     positions_paths = {
-        "x50"     : "latch:///spatials/x50_all_tissue_positions_list.csv",
-        "x50_old" : "latch:///spatials/x50-old_tissue_positions_list.csv",
-        "x96"     : "latch:///spatials/x96_all_tissue_positions_list.csv"
+        "x50"     : "s3://latch-public/test-data/13502/x50_all_tissue_positions_list.csv",
+        "x50_old" : "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
+        "x96"     : "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv"
     }
     positions_path = LatchFile(positions_paths[barcode_file.name])
     positions_file = Path(positions_path.local_path).resolve()
@@ -643,3 +643,20 @@ def total_wf(
 
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
+
+LaunchPlan(
+    total_wf,
+    "demo",
+    {
+        "r1": LatchFile(
+            "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
+        ),
+        "r2": LatchFile(
+            "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
+        ),
+        "run_id": "demo",
+        "skip1": False,
+        "skip2": False,
+        "species": LatchDir("latch:///Chromap_refernces/Human")
+    }
+)
