@@ -652,7 +652,7 @@ LaunchPlan(
             "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
         ),
         "r2": LatchFile(
-            "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
+            "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
         ),
         "run_id": "demo",
         "skip1": False,
