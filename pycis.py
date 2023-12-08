@@ -20,11 +20,9 @@ ap.add_argument('-g', required=True)
 ap.add_argument('-c', required=True)
 ap.add_argument('-k', required=True)
 ap.add_argument('-w', required=True)
-ap.add_argument('-l', required=True)
 ap.add_argument('-d', required=True)
 ap.add_argument('-t', required=True)
 ap.add_argument('-p', required=True)
-ap.add_argument('-v', required=True)
 
 args = vars(ap.parse_args())
 
@@ -34,11 +32,9 @@ genome = args['g']
 chrsize = args['c']
 black_lst = args['k']
 whitelist = args['w']
-logfile = args['l']
 work_dir = args['d']
 tmp_dir = args['t']
 positions_file = args['p']
-version = args['v']
 
 #########################################
 print('preparing fragment file starting')
@@ -322,34 +318,6 @@ peak_file = peak_file.drop_duplicates(subset='start', keep="last")
 peak_file.to_csv(f"{work_dir}/{run_id}_peaks.bed", sep='\t', header=False, index=False)
 
 print("peaks written to _peaks.bed")
-
-def chromap_log_stats(file_path, target_string):
-    # Open the file for reading
-    with open(file_path, 'r') as file:
-        for line in file:
-            # Check if the target string is present in the line
-            if target_string in line:
-                # If the string is found, print the line and break out of the loop
-                val = literal_eval(line.strip().split(": ")[1])
-                return val
-                break
-
-
-
-summary_df = pd.DataFrame(columns=['Sample ID'])
-summary_df.at[0, 'Sample ID'] = f"{run_id}"
-summary_df.at[0, 'Genome'] = genome
-summary_df.at[0, 'Pipeline version'] = "AtlasXomics-" + version
-summary_df.at[0, 'Fraction aligned reads'] = chromap_log_stats(logfile,"Number of uni-mappings") / chromap_log_stats(logfile,"Number of mappings")
-#summary_df.at[0, 'Chromap input read pairs'] = "will be added later"
-summary_df.at[0, 'Fraction unaligned reads'] = 1-(chromap_log_stats(logfile,"Number of mapped reads") / chromap_log_stats(logfile,"Number of reads"))
-summary_df.at[0, 'Fraction reads with valid barcode'] = 1-(chromap_log_stats(logfile,"Number of corrected barcodes") / chromap_log_stats(logfile,"Number of barcodes in whitelist"))
-summary_df.at[0, 'Number of peaks'] = len(peak_file.index)
-summary_df.at[0, 'TSS_enrichment'] = max([cistopic_obj.cell_data['TSS_enrichment'].mean(),cistopic_obj.cell_data['TSS_enrichment'].median()])
-summary_df.at[0, 'FRIP'] = max([cistopic_obj.cell_data['FRIP'].mean(),cistopic_obj.cell_data['FRIP'].median()])
-summary_df.at[0, 'Fraction duplicate reads'] = max([cistopic_obj.cell_data['Dupl_rate'].mean(),cistopic_obj.cell_data['Dupl_rate'].median()])
-summary_df.to_csv("/root/Statistics/summary.csv", header=True, index= False)
-print("Output written to summary.csv")
 
 print(r"""
 

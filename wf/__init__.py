@@ -277,7 +277,6 @@ def statistics(
     fastq_bc_inlst_freq = Path(f"{work_dir}/fastq_bc_inlst_freq.txt").resolve()
     chromap_bc_inlst_freq = Path(f"{work_dir}/chromap_bc_inlst_freq.txt").resolve()
     singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
-    cistopic = Path(f"{work_dir}/cistopic_cell_data.csv").resolve()
 
     positions_paths = {
         "x50"     : "s3://latch-public/test-data/13502/x50_all_tissue_positions_list.csv",
@@ -298,9 +297,9 @@ def statistics(
             "Rnor6": ["rnor6", "rn6_chrom_sizes.txt", None]
     }
 
-    _sc_cmd = [
+    _pyct_cmd = [
             "python",
-            "summary.py",
+            "pycis.py",
             "-f",
             frag.local_path,
             "-i",
@@ -313,23 +312,19 @@ def statistics(
             Path(genome_dict[genome_id][2]).resolve(),
             "-w",
             whitelist,
-            "-l",
-            logfile,
             "-d",
             work_dir,
             "-t",
             tmp_dir,
-            "-v",
-            open(Path("version").resolve(), 'r').read(),
             "-p",
             positions_file
     ]
 
-    subprocess.run(_sc_cmd)
+    subprocess.run(_pyct_cmd)
 
-    _bc_cmd = [
+    _sc_cmd = [
             "python",
-            "singlecell.py",
+            "singlecellsummary.py",
             "-r2",
             r2.local_path,
             "-bc1",
@@ -348,13 +343,18 @@ def statistics(
             str(fastq_bc_inlst_freq),
             "-cbif",
             str(chromap_bc_inlst_freq),
-            "-sc",
-            str(singlecell),
-            "-cis",
-            str(cistopic)
+            "-i",
+            run_id,
+            "-g",
+            genome_dict[genome_id][0],
+            "-l",
+            logfile,
+            "-v",
+            open(Path("version").resolve(), 'r').read()
+
     ]
 
-    subprocess.run(_bc_cmd)
+    subprocess.run(_sc_cmd)
 
     print("Creating lane qc plot!")
     plotting_task(singlecell, positions_file)
@@ -660,3 +660,21 @@ LaunchPlan(
         "species": LatchDir("latch:///Chromap_refernces/Human")
     }
 )
+
+if __name__ == '__main__':
+
+    r2 = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz")
+    species = LatchDir("latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
+    bed = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
+    frag = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/fragments.tsv.gz")
+    logfile = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/chromap_log.txt")
+
+    statistics(
+        r2=r2,
+        species=species,
+        run_id="test",
+        barcode_file=BarcodeFile.x50,
+        bed=bed,
+        frag=frag,
+        logfile=logfile
+    )

@@ -159,8 +159,8 @@ RUN R -e "BiocManager::install('BSgenome.Rnorvegicus.UCSC.rn6')"
 RUN R -e "install.packages(c('Seurat'), dependencies = TRUE, repos = 'http://cran.us.r-project.org')"
 
 COPY rn6_chrom_sizes.txt /root/rn6_chrom_sizes.txt
-COPY summary.py /root/summary.py
-COPY singlecell.py /root/singlecell.py
+COPY singlecellsummary.py /root/singlecellsummary.py
+COPY pycis.py /root/pycis.py
 COPY peak_files.R /root/peak_files.R
 COPY version /root/version
 
