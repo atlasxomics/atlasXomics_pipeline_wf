@@ -279,9 +279,9 @@ def statistics(
     singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
 
     positions_paths = {
-        "x50"     : "latch:///spatials/x50_all_tissue_positions_list.csv",
-        "x50_old" : "latch:///spatials/x50-old_tissue_positions_list.csv",
-        "x96"     : "latch:///spatials/x96_all_tissue_positions_list.csv"
+        "x50"     : "s3://latch-public/test-data/13502/x50_all_tissue_positions_list.csv",
+        "x50_old" : "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
+        "x96"     : "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv"
     }
     positions_path = LatchFile(positions_paths[barcode_file.name])
     positions_file = Path(positions_path.local_path).resolve()
@@ -648,14 +648,16 @@ LaunchPlan(
     total_wf,
     "demo",
     {
-        "r1": LatchFile("latch://13502.account/downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R1_001.fastq.gz"),
-        "r2": LatchFile("latch://13502.account/downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
+        "r1": LatchFile(
+            "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
+        ),
+        "r2": LatchFile(
+            "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
+        ),
         "run_id": "demo",
         "skip1": False,
         "skip2": False,
-        "species": LatchDir(
-            "latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCh38_1.1.0"
-        )
+        "species": LatchDir("latch:///Chromap_refernces/Human")
     }
 )
 
