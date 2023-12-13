@@ -31,6 +31,7 @@ class BarcodeFile(Enum):
     x50 = "bc50.txt"
     x50_old = "bc50_old.txt"
     x96 = "bc96.txt"
+    x96_fg = "bc96_fg.txt"
 
 
 @large_task(retries=0)
@@ -279,9 +280,10 @@ def statistics(
     singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
 
     positions_paths = {
-        "x50"     : "s3://latch-public/test-data/13502/x50_all_tissue_positions_list.csv",
-        "x50_old" : "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
-        "x96"     : "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv"
+        "x50": "s3://latch-public/test-data/13502/x50_all_tissue_positions_list.csv",
+        "x50_old": "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
+        "x96": "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv",
+        "x96_fg": "s3://latch-public/test-data/13502/xfg96_11DEC_all_tissue_positions_list.csv"
     }
     positions_path = LatchFile(positions_paths[barcode_file.name])
     positions_file = Path(positions_path.local_path).resolve()
