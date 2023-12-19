@@ -474,7 +474,7 @@ metadata = LatchMetadata(
             display_name="Chromap genome directory",
             description="Select reference genome for chromap alignment. Make \
                     sure to use right directory, eg. \
-                    '/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0'",
+                    '/Chromap_references/Refdata_scATAC_MAESTRO_GRCm38_1.1.0'",
             batch_table_column=True,
         ),
         "r1": LatchParameter(
@@ -659,14 +659,14 @@ LaunchPlan(
         "run_id": "demo",
         "skip1": False,
         "skip2": False,
-        "species": LatchDir("latch:///Chromap_refernces/Human")
+        "species": LatchDir("latch:///Chromap_references/Human")
     }
 )
 
 if __name__ == '__main__':
 
     r2 = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz")
-    species = LatchDir("latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
+    species = LatchDir("latch://13502.account/Chromap_references/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
     bed = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
     frag = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/fragments.tsv.gz")
     logfile = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/chromap_log.txt")
