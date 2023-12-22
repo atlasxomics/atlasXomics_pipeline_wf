@@ -25,6 +25,7 @@ from latch.types import (
 from latch import create_conditional_section
 
 import wf.lims as lims
+
 from wf.outliers import plotting_task
 
 
@@ -514,7 +515,7 @@ def upload_latch_registry(
 
 
 metadata = LatchMetadata(
-    display_name="ATX epigenomic preprocessing",
+    display_name="js_addBulk_Test",
     author=LatchAuthor(
         name="Noori Sotudeh",
         email="noorisotudeh@gmail.com",
