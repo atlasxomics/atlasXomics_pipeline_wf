@@ -22,6 +22,7 @@ from latch.types import (
     LatchParameter,
     LatchRule
 )
+from latch import create_conditional_section
 
 import wf.lims as lims
 from wf.outliers import plotting_task
@@ -121,6 +122,53 @@ def filtering(
             f"latch:///chromap_outputs/{run_id}/preprocessing/{l2_stats.name}"
         )
     )
+
+@medium_task(retries=0)
+def process_bc_task(
+    r2: LatchFile,
+    run_id: str,
+    bulk: bool,
+    noLigation_bulk: bool
+) -> Tuple[LatchFile, LatchFile]:
+    """ Process read2: save genomic portion as read3, extract 16 bp
+    barcode seqs and save as read3
+    """
+
+    outdir = Path("chromap_inputs/").resolve()
+    os.mkdir(outdir)
+    new_r2 = Path(f"{outdir}/{run_id}_S1_L001_R2_001.fastq").resolve()
+    r3 = Path(f"{outdir}/{run_id}_S1_L001_R3_001.fastq").resolve()
+
+    _bc_cmd = [
+        "python",
+        "bc_process_newbulk.py",
+        "-i",
+        r2.local_path,
+        "-o2",
+        f"{str(new_r2)}",
+        "-o3",
+        f"{str(r3)}"
+    ]
+
+    if bulk:
+        _bc_cmd.append('-b -cm')
+    if noLigation_bulk:
+        _bc_cmd.append('-nl -cm')
+
+    subprocess.run(_bc_cmd)
+
+    return (
+        LatchFile(
+            str(new_r2),
+            f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R2.fastq.gz"
+        ),
+        LatchFile(
+            str(r3),
+            f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R3.fastq.gz"
+        ),
+
+    )
+
 
 
 @large_task(retries=0)
@@ -523,6 +571,16 @@ metadata = LatchMetadata(
                         bc50_old.txt for previous version of 50x50.",
             batch_table_column=True,
         ),
+        "bulk": LatchParameter(
+            display_name="bulk",
+            description="If True, barcodes will be randomly assigned to reads.",
+            batch_table_column=True,
+        ),
+        "noLigation_bulk": LatchParameter(
+            display_name="No Ligation Primer Bulk",
+            description="If True, barcodes will be randomly assigned to reads.",
+            batch_table_column=True,
+        ),
         "upload_to_slims": LatchParameter(
             display_name="upload to slims",
             description="Select for run metrics to be upload to SLIMS; if \
@@ -566,6 +624,8 @@ def total_wf(
     species: LatchDir,
     ng_id: Optional[str],
     barcode_file: BarcodeFile = BarcodeFile.x50,
+    noLigation_bulk: bool = False,
+    bulk: bool = False,
     upload_to_slims: bool = False,
     table_id: str = "761"
 ) -> List[Union[LatchDir, LatchFile]]:
@@ -608,24 +668,115 @@ def total_wf(
         skip1=skip1,
         skip2=skip2
     )
-
-    chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
-        r1=filtered_r1,
-        r2=filtered_r2,
-        run_id=run_id,
-        species=species,
-        barcode_file=barcode_file
+    
+    bulkd_r2, seq_r3 =  (
+        create_conditional_section("bulks")
+        .if_((bulk == True)).then(
+            process_bc_task(
+                r2=filtered_r2,
+                run_id=run_id,
+                bulk=bulk,
+                noLigation_bulk = noLigation_bulk
+            )
+        )
+        .elif_((noLigation_bulk == True)).then(
+            process_bc_task(
+                r2=filtered_r2,
+                run_id=run_id,
+                bulk=bulk,
+                noLigation_bulk = noLigation_bulk
+            )
+        )
     )
 
-    reports = statistics(
-        r2=r2,
-        bed=chromap_bed,
-        frag=chromap_frag,
-        logfile=chromap_log,
-        species=species,
-        run_id=run_id,
-        barcode_file=barcode_file
+    chromap_bed, chromap_log, chromap_frag, chromap_index =  (
+        create_conditional_section("alignment")
+        .if_((bulk == True)).then(
+            alignment(
+                r1=filtered_r1,
+                r2=bulkd_r2,
+                run_id=run_id,
+                species=species,
+                barcode_file=barcode_file
+            )        
+        )
+        .elif_((noLigation_bulk == True)).then(
+            alignment(
+                r1=filtered_r1,
+                r2=bulkd_r2,
+                run_id=run_id,
+                species=species,
+                barcode_file=barcode_file
+            )        
+        )
+        .else_(
+            alignment(
+                r1=filtered_r1,
+                r2=filtered_r2,
+                run_id=run_id,
+                species=species,
+                barcode_file=barcode_file
+            )        
+        )
     )
+    
+
+#    chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
+#        r1=filtered_r1,
+#        r2=filtered_r2,
+#        run_id=run_id,
+#        species=species,
+#        barcode_file=barcode_file
+#    )
+
+
+    reports =  (
+        create_conditional_section("statistics")
+        .if_((bulk == True)).then(
+            statistics(
+                r2=bulkd_r2,
+                bed=chromap_bed,
+                frag=chromap_frag,
+                logfile=chromap_log,
+                species=species,
+                run_id=run_id,
+                barcode_file=barcode_file
+            )        
+        )
+        .elif_((noLigation_bulk == True)).then(
+            statistics(
+                r2=bulkd_r2,
+                bed=chromap_bed,
+                frag=chromap_frag,
+                logfile=chromap_log,
+                species=species,
+                run_id=run_id,
+                barcode_file=barcode_file
+            )        
+        )
+        .else_(
+            statistics(
+                r2=r2,
+                bed=chromap_bed,
+                frag=chromap_frag,
+                logfile=chromap_log,
+                species=species,
+                run_id=run_id,
+                barcode_file=barcode_file
+            )        
+        )
+    )
+
+
+#    reports = statistics(
+#        r2=r2,
+#        bed=chromap_bed,
+#        frag=chromap_frag,
+#        logfile=chromap_log,
+#        species=species,
+#        run_id=run_id,
+#        barcode_file=barcode_file
+#    )
 
     lims_task(
         results_dir=reports,
