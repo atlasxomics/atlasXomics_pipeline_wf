@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
 
-from latch import large_task, small_task, workflow
+from latch import large_task, small_task, medium_task, workflow
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
 from latch.registry.table import Table
@@ -129,11 +129,16 @@ def process_bc_task(
     run_id: str,
     bulk: bool,
     noLigation_bulk: bool
-) -> Tuple[LatchFile, LatchFile]:
+) -> LatchFile:
     """ Process read2: save genomic portion as read3, extract 16 bp
     barcode seqs and save as read3
     """
-
+    if(not (bulk or noLigation_bulk)):
+        return LatchFile(
+            r2.local_path,
+            r2.remote_path
+            )
+            
     outdir = Path("chromap_inputs/").resolve()
     os.mkdir(outdir)
     new_r2 = Path(f"{outdir}/{run_id}_S1_L001_R2_001.fastq").resolve()
@@ -157,17 +162,16 @@ def process_bc_task(
 
     subprocess.run(_bc_cmd)
 
-    return (
-        LatchFile(
+    return LatchFile(
             str(new_r2),
             f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R2.fastq.gz"
-        ),
-        LatchFile(
-            str(r3),
-            f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R3.fastq.gz"
-        ),
+        )
+#        LatchFile(
+#            str(r3),
+#            f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R3.fastq.gz"
+#        ),
 
-    )
+#    )
 
 
 
@@ -669,114 +673,31 @@ def total_wf(
         skip2=skip2
     )
     
-    bulkd_r2, seq_r3 =  (
-        create_conditional_section("bulks")
-        .if_((bulk == True)).then(
-            process_bc_task(
+    bulkd_r2 =  process_bc_task(
                 r2=filtered_r2,
                 run_id=run_id,
                 bulk=bulk,
                 noLigation_bulk = noLigation_bulk
-            )
-        )
-        .elif_((noLigation_bulk == True)).then(
-            process_bc_task(
-                r2=filtered_r2,
-                run_id=run_id,
-                bulk=bulk,
-                noLigation_bulk = noLigation_bulk
-            )
-        )
     )
 
-    chromap_bed, chromap_log, chromap_frag, chromap_index =  (
-        create_conditional_section("alignment")
-        .if_((bulk == True)).then(
-            alignment(
+
+    chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
                 r1=filtered_r1,
                 r2=bulkd_r2,
                 run_id=run_id,
                 species=species,
                 barcode_file=barcode_file
-            )        
-        )
-        .elif_((noLigation_bulk == True)).then(
-            alignment(
-                r1=filtered_r1,
-                r2=bulkd_r2,
-                run_id=run_id,
-                species=species,
-                barcode_file=barcode_file
-            )        
-        )
-        .else_(
-            alignment(
-                r1=filtered_r1,
-                r2=filtered_r2,
-                run_id=run_id,
-                species=species,
-                barcode_file=barcode_file
-            )        
-        )
+    )        
+
+    reports = statistics(
+        r2=bulkd_r2,
+        bed=chromap_bed,
+        frag=chromap_frag,
+        logfile=chromap_log,
+        species=species,
+        run_id=run_id,
+        barcode_file=barcode_file
     )
-    
-
-#    chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
-#        r1=filtered_r1,
-#        r2=filtered_r2,
-#        run_id=run_id,
-#        species=species,
-#        barcode_file=barcode_file
-#    )
-
-
-    reports =  (
-        create_conditional_section("statistics")
-        .if_((bulk == True)).then(
-            statistics(
-                r2=bulkd_r2,
-                bed=chromap_bed,
-                frag=chromap_frag,
-                logfile=chromap_log,
-                species=species,
-                run_id=run_id,
-                barcode_file=barcode_file
-            )        
-        )
-        .elif_((noLigation_bulk == True)).then(
-            statistics(
-                r2=bulkd_r2,
-                bed=chromap_bed,
-                frag=chromap_frag,
-                logfile=chromap_log,
-                species=species,
-                run_id=run_id,
-                barcode_file=barcode_file
-            )        
-        )
-        .else_(
-            statistics(
-                r2=r2,
-                bed=chromap_bed,
-                frag=chromap_frag,
-                logfile=chromap_log,
-                species=species,
-                run_id=run_id,
-                barcode_file=barcode_file
-            )        
-        )
-    )
-
-
-#    reports = statistics(
-#        r2=r2,
-#        bed=chromap_bed,
-#        frag=chromap_frag,
-#        logfile=chromap_log,
-#        species=species,
-#        run_id=run_id,
-#        barcode_file=barcode_file
-#    )
 
     lims_task(
         results_dir=reports,
