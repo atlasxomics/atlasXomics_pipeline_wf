@@ -129,7 +129,8 @@ def process_bc_task(
     r2: LatchFile,
     run_id: str,
     bulk: bool,
-    noLigation_bulk: bool
+    noLigation_bulk: bool,
+    barcode_file: BarcodeFile
 ) -> LatchFile:
     """ Process read2: save genomic portion as read3, extract 16 bp
     barcode seqs and save as read3
@@ -153,7 +154,9 @@ def process_bc_task(
         "-o2",
         f"{str(new_r2)}",
         "-o3",
-        f"{str(r3)}"
+        f"{str(r3)}",
+        "-bcf",
+        f"{barcode_file.value}"
     ]
 
     if bulk:
@@ -678,7 +681,8 @@ def total_wf(
                 r2=filtered_r2,
                 run_id=run_id,
                 bulk=bulk,
-                noLigation_bulk = noLigation_bulk
+                noLigation_bulk = noLigation_bulk,
+                barcode_file=barcode_file
     )
 
 
