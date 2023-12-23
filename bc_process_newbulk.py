@@ -6,7 +6,8 @@
 import argparse
 import random
 import logging
-from gzip import open as gzopen
+import gzip
+#from gzip import open as gzopen
 
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
@@ -52,10 +53,14 @@ output_file_R3 = args['o3']
 output_file_R2 = args['o2']
 
 
-if args['b'] or args['nl'] or args['cm']:
-    bc_list = gzopen(args['bcf'], 'rt').readlines()
+if args['b'] or args['nl']:
+    try:
+        bc_list = gzip.open(args['bcf'], 'rt').readlines()
+    except gzip.BadGzipFile:
+        logging.info(f"BC file {args['bcf']} is not gzipped. Opening as plain text.")
+        bc_list = open(args['bcf'], 'rt').readlines()
 
-with gzopen(input_file_R2, 'rt') as in_handle_R2, \
+with gzip.open(input_file_R2, 'rt') as in_handle_R2, \
     open(output_file_R3, 'w') as out_handle_R3, \
         open(output_file_R2, 'w') as out_handle_R2:
     for title, seq, qual in FastqGeneralIterator(in_handle_R2):
