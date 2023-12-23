@@ -160,9 +160,12 @@ def process_bc_task(
     ]
 
     if bulk:
-        _bc_cmd.append('-b -cm')
+        _bc_cmd.append('-b')
+        _bc_cmd.append('-cm')
     if noLigation_bulk:
-        _bc_cmd.append('-nl -cm')
+        _bc_cmd.append('-nl')
+        _bc_cmd.append('-cm')
+
 
     subprocess.run(_bc_cmd)
 
