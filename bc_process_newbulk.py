@@ -34,7 +34,7 @@ logging.info("Initializing Barcode Read Processing")
 
 ap = argparse.ArgumentParser()
 ap.add_argument('-i', required=True)
-ap.add_argument('-o2', required=True)
+ap.add_argument('-o2', required=True, help="Required path to output: Gzipped FastQ for read2")
 ap.add_argument('-o3', required=True)
 ap.add_argument('-b', required=False, action='store_true')
 ap.add_argument('-nl', required=False, action='store_true', help="Optional flag to process no-ligation bulks")
@@ -60,16 +60,30 @@ if args['b'] or args['nl']:
         logging.info(f"BC file {args['bcf']} is not gzipped. Opening as plain text.")
         bc_list = open(args['bcf'], 'rt').readlines()
 
-with gzip.open(input_file_R2, 'rt') as in_handle_R2, \
-    open(output_file_R3, 'w') as out_handle_R3, \
-        open(output_file_R2, 'w') as out_handle_R2:
+try:
+    logging.info(f"Reading input Fastq file {input_file_R2} as gzip.")
+    testRead = gzip.open(input_file_R2, 'rt')
+    pk = testRead.read(1)
+    in_handle_R2 = gzip.open(input_file_R2, 'rt')
+except gzip.BadGzipFile:
+    logging.info(f"Input Fastq file {input_file_R2} is not gzipped. Opening as plain text.")
+    in_handle_R2 = open(input_file_R2, 'rt')
+
+with in_handle_R2, \
+    gzip.open(output_file_R3, 'wt') as out_handle_R3, \
+    gzip.open(output_file_R2, 'wt') as out_handle_R2:
+
+    readCount = 0
     for title, seq, qual in FastqGeneralIterator(in_handle_R2):
+        readCount += 1
+        if not (readCount % 500000):
+            logging.info(f"Processed {readCount} reads")
         new_seq_R3 = seq[seq_start:]
         new_qual_R3 = qual[seq_start:]
         out_handle_R3.write(
             f'@{title}\n{new_seq_R3}\n+\n{new_qual_R3}\n'
         )
-        if args['b'] or args['cm'] or args['nl']: # if we're doing bulk or we need a chromap-style output, get a random barcode from list
+        if args['b'] or args['nl']: # if we're doing bulk or we need a chromap-style output, get a random barcode from list
             barcode = random.choice(bc_list).rstrip()
         else:
             barcode = seq[bc2_start:bc2_end] + seq[bc1_start:bc1_end]  #if we're not doing bulk, get the barcode from the read sequence
@@ -87,4 +101,4 @@ with gzip.open(input_file_R2, 'rt') as in_handle_R2, \
             outRead2Qual = qual  #we we keep the intact quality scores for all the bases
             out_handle_R2.write(f'@{title}\n{outRead2}\n+\n{outRead2Qual}\n')  # we output the entry
             
-print("complete")
+logging.info("complete")
