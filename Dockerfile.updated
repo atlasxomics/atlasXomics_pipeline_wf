@@ -11,10 +11,9 @@ RUN curl -L https://sourceforge.net/projects/bbmap/files/BBMap_39.01.tar.gz/down
     BBMap_39.01.tar.gz && \
     tar -xvzf BBMap_39.01.tar.gz && \
     rm BBMap_39.01.tar.gz
-RUN python3 -m pip install biopython slims-python-api
+RUN python3 -m pip install biopython slims-python-api matplotlib pandas
 
 
-# cellranger download link, needs to be updated periodically
 
 
 # Copy barcode files to root dir
@@ -33,11 +32,6 @@ COPY pycis.py /root/pycis.py
 COPY peak_files.R /root/peak_files.R
 COPY version /root/version
 COPY bc_process_newbulk.py /root/bc_process_newbulk.py
-
-RUN python3 -m pip install matplotlib
-RUN python3 -m pip install pandas
-
-
 
 #install chromap
 
