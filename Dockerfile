@@ -43,7 +43,9 @@ RUN wget https://github.com/haowenz/chromap/archive/refs/heads/li_dev4.zip && \
     cd /root 
 
 
-RUN apt-get install -y gdebi-core
+RUN apt-get update -y && \
+    apt-get install -y gdebi-core
+
 RUN apt install -y aptitude
 RUN aptitude install -y libjpeg-dev
 RUN apt-get install tabix
