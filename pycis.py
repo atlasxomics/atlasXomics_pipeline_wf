@@ -3,6 +3,7 @@ import gzip
 import pickle
 import argparse
 import pandas as pd
+import pathlib
 import pyranges as pr
 import pybiomart as pbm
 from pycisTopic.qc import *
@@ -309,7 +310,9 @@ cistopic_obj.cell_data.to_csv(work_dir + '/cistopic_cell_data.csv', sep=",", hea
 
 
 
-peak_file = pd.read_table(open(os.path.join(work_dir + f'/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak'), 'rb'), sep='\t', header=None)
+#peak_file = pd.read_table(open(os.path.join(work_dir + f'/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak'), 'rb'), sep='\t', header=None)
+peak_file = pd.read_table(str(list(pathlib.Path(os.path.join(work_dir + '/scATAC/consensus_peak_calling/MACS/')).glob('*.narrowPeak'))[0]), sep='\t', header=None)
+
 peak_file.columns=["chr","start","end","name","score","strand"
                                  ,"fold_change","neg_log10pvalue_summit","neg_log10qvalue_summit","relative_summit_position"]
 

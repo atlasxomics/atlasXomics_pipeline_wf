@@ -21,6 +21,7 @@ RUN python3 -m pip install biopython slims-python-api
 COPY bc50.txt /root/bc50.txt
 COPY bc50_old.txt /root/bc50_old.txt
 COPY bc96.txt /root/bc96.txt
+COPY bc96_fg.txt /root/bc96_fg.txt
 
 RUN python3 -m pip install matplotlib
 RUN python3 -m pip install pandas

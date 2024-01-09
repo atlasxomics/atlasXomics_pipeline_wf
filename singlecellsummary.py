@@ -181,10 +181,17 @@ with open(chromap_bc_inlst_freq, 'w') as fw:
 
 subset_df = pd.read_csv(fastq_bc_inlst_freq, sep="\t", header=None)
 df_bed = pd.read_csv(chromap_bc_inlst_freq, sep="\t", header=None)
+#check if fastq has barcodes that chromap didn't find!
 missed_barcodes = list(set(subset_df[0].tolist()) - set(df_bed[0].tolist()))
 df_bed = df_bed.append(missed_barcodes, ignore_index=True)
 df_bed.replace(np.nan, 0, inplace=True)
 df_bed = df_bed.sort_values([0], ascending=[True])
+#check if chromap find or corrected some barcodes that missed in fastq one!
+missed_barcodes = list(set(df_bed[0].tolist())-set(subset_df[0].tolist()))
+subset_df = subset_df.append(missed_barcodes, ignore_index=True)
+subset_df.replace(np.nan, 0, inplace=True)
+subset_df = subset_df.sort_values([0], ascending=[True])
+#merge them
 df_bed.index=subset_df.index
 cistopic_obj = pd.read_csv("./Statistics/cistopic_cell_data.csv")
 cistopic_obj.index = cistopic_obj['barcode']

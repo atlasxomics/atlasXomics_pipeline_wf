@@ -32,6 +32,7 @@ class BarcodeFile(Enum):
     x50 = "bc50.txt"
     x50_old = "bc50_old.txt"
     x96 = "bc96.txt"
+    x96_fg = "bc96_fg.txt"
 
 
 @large_task(retries=0)
@@ -280,9 +281,10 @@ def statistics(
     singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
 
     positions_paths = {
-        "x50"     : "s3://latch-public/test-data/13502/x50_all_tissue_positions_list.csv",
-        "x50_old" : "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
-        "x96"     : "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv"
+        "x50": "s3://latch-public/test-data/13502/x50_all_tissue_positions_list.csv",
+        "x50_old": "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
+        "x96": "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv",
+        "x96_fg": "s3://latch-public/test-data/13502/xfg96_11DEC_all_tissue_positions_list.csv"
     }
     positions_path = LatchFile(positions_paths[barcode_file.name])
     positions_file = Path(positions_path.local_path).resolve()
@@ -483,7 +485,7 @@ metadata = LatchMetadata(
             display_name="Chromap genome directory",
             description="Select reference genome for chromap alignment. Make \
                     sure to use right directory, eg. \
-                    '/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0'",
+                    '/Chromap_references/Refdata_scATAC_MAESTRO_GRCm38_1.1.0'",
             batch_table_column=True,
         ),
         "r1": LatchParameter(
@@ -668,14 +670,14 @@ LaunchPlan(
         "run_id": "demo",
         "skip1": False,
         "skip2": False,
-        "species": LatchDir("latch:///Chromap_refernces/Human")
+        "species": LatchDir("latch:///Chromap_references/Human")
     }
 )
 
 if __name__ == '__main__':
 
     r2 = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz")
-    species = LatchDir("latch://13502.account/Chromap_refernces/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
+    species = LatchDir("latch://13502.account/Chromap_references/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
     bed = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
     frag = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/fragments.tsv.gz")
     logfile = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/chromap_log.txt")
