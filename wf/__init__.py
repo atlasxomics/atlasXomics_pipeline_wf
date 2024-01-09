@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List, Optional, Union, Tuple
 
 from latch import large_task, small_task, workflow
+from latch.account import Account
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
 from latch.registry.table import Table
@@ -432,33 +433,43 @@ def upload_latch_registry(
     results_dir: LatchDir,
     table_id: str = "761"
 ):
-    table = Table(table_id)
+    
+    acc = Account.current()
 
-    prefix = f"{results_dir.remote_path}/"
+    if acc.id == '13502':
 
-    peaks_bed = f"{prefix}{run_id}_peaks.bed"
-    raw_peaks_bc_matrix_h5 = f"{prefix}{run_id}_raw_peak_bc_matrix.h5"
-    single_cell_file = f"{prefix}/singlecell.csv"
+        table = Table(table_id)
 
-    fragments_file_tbi = f"{chromap_frag.remote_path}.tbi"
+        prefix = f"{results_dir.remote_path}/"
 
-    with table.update() as updater:
-        try:
-            updater.upsert_record(
-                run_id,
-                fastq_read_1=r1,
-                fastq_read_2=r2,
-                fragments_file=chromap_frag,
-                peaks_bed=LatchFile(peaks_bed),
-                fragment_file_tbi=LatchFile(fragments_file_tbi),
-                raw_peaks_bc_matrix_h5=LatchFile(raw_peaks_bc_matrix_h5),
-                single_cell_file=LatchFile(single_cell_file)
-            )
-        except TypeError:
-            logging.warning(f"No table with id {table_id} found.")
-            return
-        finally:
-            return
+        peaks_bed = f"{prefix}{run_id}_peaks.bed"
+        raw_peaks_bc_matrix_h5 = f"{prefix}{run_id}_raw_peak_bc_matrix.h5"
+        single_cell_file = f"{prefix}/singlecell.csv"
+
+        fragments_file_tbi = f"{chromap_frag.remote_path}.tbi"
+
+        with table.update() as updater:
+            try:
+                updater.upsert_record(
+                    run_id,
+                    fastq_read_1=r1,
+                    fastq_read_2=r2,
+                    fragments_file=chromap_frag,
+                    peaks_bed=LatchFile(peaks_bed),
+                    fragment_file_tbi=LatchFile(fragments_file_tbi),
+                    raw_peaks_bc_matrix_h5=LatchFile(raw_peaks_bc_matrix_h5),
+                    single_cell_file=LatchFile(single_cell_file)
+                )
+                return
+            except:
+                logging.warning(f"No table with id {table_id} found.")
+                return
+            finally:
+                return
+    else:
+        return
+
+
 
 
 metadata = LatchMetadata(
