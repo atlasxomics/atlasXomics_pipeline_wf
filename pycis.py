@@ -3,6 +3,7 @@ import gzip
 import pickle
 import argparse
 import pandas as pd
+import pathlib
 import pyranges as pr
 import pybiomart as pbm
 from pycisTopic.qc import *
