@@ -13,7 +13,12 @@ library(BSgenome.Rnorvegicus.UCSC.rn6)
 args <- commandArgs(trailingOnly=TRUE)
 
 fragpath <- args[1]
-narrowPeak <- args[2]
+#narrowPeak <- args[2]
+narrowPeak <- list.files('/root/Statistics/scATAC/consensus_peak_calling/MACS/'
+                         , pattern = '*.narrowPeak'
+                         ,full.names = TRUE
+                         , include.dirs = TRUE)
+
 species <- args[3]
 run_id <- args[4]
 

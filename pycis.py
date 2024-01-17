@@ -43,8 +43,11 @@ print('preparing fragment file starting')
 with gzip.open(fragment, 'rb') as file:
     df = pd.read_table(file, header=None)
 
-targeted_chromosomes = {"chr1", "chr2","chr3", "chr4","chr5", "chr6", "chr7","chr8", "chr9","chr10",
-                       "chr11", "chr12","chr13", "chr14","chr15", "chr16", "chr17","chr18", "chr19","chr20","chr21","chrX", "chrY"}
+targeted_chromosomes = {
+    "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",
+    "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19",
+    "chr20", "chr21", "chr22", "chrX", "chrY"
+}
 
 subset_df = df[df[0].isin(targeted_chromosomes)]
 
