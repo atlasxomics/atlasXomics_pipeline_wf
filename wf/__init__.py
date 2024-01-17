@@ -22,7 +22,6 @@ from latch.types import (
     LatchParameter,
     LatchRule
 )
-from latch import create_conditional_section
 
 import wf.lims as lims
 
@@ -124,6 +123,7 @@ def filtering(
         )
     )
 
+
 @medium_task(retries=0)
 def process_bc_task(
     r2: LatchFile,
@@ -135,12 +135,12 @@ def process_bc_task(
     """ Process read2: save genomic portion as read3, extract 16 bp
     barcode seqs and save as read3
     """
-    if(not (bulk or noLigation_bulk)):
+    if (not (bulk or noLigation_bulk)):
         return LatchFile(
             r2.local_path,
             r2.remote_path
             )
-            
+
     outdir = Path("chromap_inputs/").resolve()
     os.mkdir(outdir)
     new_r2 = Path(f"{outdir}/{run_id}_S1_L001_R2_001.fastq").resolve()
@@ -166,20 +166,12 @@ def process_bc_task(
         _bc_cmd.append('-nl')
         _bc_cmd.append('-cm')
 
-
     subprocess.run(_bc_cmd)
 
     return LatchFile(
             str(new_r2),
             f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R2.fastq.gz"
         )
-#        LatchFile(
-#            str(r3),
-#            f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R3.fastq.gz"
-#        ),
-
-#    )
-
 
 
 @large_task(retries=0)
@@ -584,12 +576,14 @@ metadata = LatchMetadata(
         ),
         "bulk": LatchParameter(
             display_name="bulk",
-            description="If True, barcodes will be randomly assigned to reads.",
+            description="If True, barcodes will be randomly assigned to \
+                        reads.",
             batch_table_column=True,
         ),
         "noLigation_bulk": LatchParameter(
             display_name="No Ligation Primer Bulk",
-            description="If True, barcodes will be randomly assigned to reads.",
+            description="If True, barcodes will be randomly assigned to \
+                        reads.",
             batch_table_column=True,
         ),
         "upload_to_slims": LatchParameter(
@@ -679,15 +673,14 @@ def total_wf(
         skip1=skip1,
         skip2=skip2
     )
-    
-    bulkd_r2 =  process_bc_task(
+
+    bulkd_r2 = process_bc_task(
                 r2=filtered_r2,
                 run_id=run_id,
                 bulk=bulk,
-                noLigation_bulk = noLigation_bulk,
+                noLigation_bulk=noLigation_bulk,
                 barcode_file=barcode_file
     )
-
 
     chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
                 r1=filtered_r1,
@@ -695,7 +688,7 @@ def total_wf(
                 run_id=run_id,
                 species=species,
                 barcode_file=barcode_file
-    )        
+    )
 
     reports = statistics(
         r2=bulkd_r2,
