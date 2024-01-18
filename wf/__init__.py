@@ -524,7 +524,7 @@ def upload_latch_registry(
 
 
 metadata = LatchMetadata(
-    display_name="ATX Epigenomic Preprocessing",
+    display_name="ATX epigenomic preprocessing",
     author=LatchAuthor(
         name="Noori Sotudeh",
         email="noorisotudeh@gmail.com",
