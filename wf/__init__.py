@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
 
-from latch import large_task, small_task, workflow
+from latch import large_task, small_task, medium_task, workflow
 from latch.account import Account
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
@@ -25,6 +25,7 @@ from latch.types import (
 )
 
 import wf.lims as lims
+
 from wf.outliers import plotting_task
 
 
@@ -122,6 +123,56 @@ def filtering(
             f"latch:///chromap_outputs/{run_id}/preprocessing/{l2_stats.name}"
         )
     )
+
+
+@medium_task(retries=0)
+def process_bc_task(
+    r2: LatchFile,
+    run_id: str,
+    bulk: bool,
+    noLigation_bulk: bool,
+    barcode_file: BarcodeFile
+) -> LatchFile:
+    """ Process read2: save genomic portion as read3, extract 16 bp
+    barcode seqs and save as read3
+    """
+    if (not (bulk or noLigation_bulk)):
+        return LatchFile(
+            r2.local_path,
+            r2.remote_path
+            )
+
+    outdir = Path("chromap_inputs/").resolve()
+    os.mkdir(outdir)
+    new_r2 = Path(f"{outdir}/{run_id}_S1_L001_R2_001.fastq").resolve()
+    r3 = Path(f"{outdir}/{run_id}_S1_L001_R3_001.fastq").resolve()
+
+    _bc_cmd = [
+        "python",
+        "bc_process_newbulk.py",
+        "-i",
+        r2.local_path,
+        "-o2",
+        f"{str(new_r2)}",
+        "-o3",
+        f"{str(r3)}",
+        "-bcf",
+        f"{barcode_file.value}"
+    ]
+
+    if bulk:
+        _bc_cmd.append('-b')
+        _bc_cmd.append('-cm')
+    if noLigation_bulk:
+        _bc_cmd.append('-nl')
+        _bc_cmd.append('-cm')
+
+    subprocess.run(_bc_cmd)
+
+    return LatchFile(
+            str(new_r2),
+            f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R2.fastq.gz"
+        )
 
 
 @large_task(retries=0)
@@ -534,6 +585,19 @@ metadata = LatchMetadata(
                         bc50_old.txt for previous version of 50x50.",
             batch_table_column=True,
         ),
+        "bulk": LatchParameter(
+            display_name="bulk",
+            description=" If true, barcode sequences in reads will be \
+                        replaced with random barcodes (current: bulk).",
+            batch_table_column=True,
+        ),
+        "noLigation_bulk": LatchParameter(
+            display_name="No Ligation Primer Bulk",
+            description="If true, reads will have linker sequences added and \
+                        random barcodes assigned (current: No ligation \
+                        Primer Bulk).",
+            batch_table_column=True,
+        ),
         "upload_to_slims": LatchParameter(
             display_name="upload to slims",
             description="Select for run metrics to be upload to SLIMS; if \
@@ -577,6 +641,8 @@ def total_wf(
     species: LatchDir,
     ng_id: Optional[str],
     barcode_file: BarcodeFile = BarcodeFile.x50,
+    noLigation_bulk: bool = False,
+    bulk: bool = False,
     upload_to_slims: bool = False,
     table_id: str = "761"
 ) -> List[Union[LatchDir, LatchFile]]:
@@ -620,16 +686,24 @@ def total_wf(
         skip2=skip2
     )
 
+    bulkd_r2 = process_bc_task(
+                r2=filtered_r2,
+                run_id=run_id,
+                bulk=bulk,
+                noLigation_bulk=noLigation_bulk,
+                barcode_file=barcode_file
+    )
+
     chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
-        r1=filtered_r1,
-        r2=filtered_r2,
-        run_id=run_id,
-        species=species,
-        barcode_file=barcode_file
+                r1=filtered_r1,
+                r2=bulkd_r2,
+                run_id=run_id,
+                species=species,
+                barcode_file=barcode_file
     )
 
     reports = statistics(
-        r2=r2,
+        r2=bulkd_r2,
         bed=chromap_bed,
         frag=chromap_frag,
         logfile=chromap_log,
