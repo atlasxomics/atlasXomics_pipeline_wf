@@ -587,14 +587,15 @@ metadata = LatchMetadata(
         ),
         "bulk": LatchParameter(
             display_name="bulk",
-            description="If True, barcodes will be randomly assigned to \
-                        reads.",
+            description=" If true, barcode sequences in reads will be \
+                        replaced with random barcodes (current: bulk).",
             batch_table_column=True,
         ),
         "noLigation_bulk": LatchParameter(
             display_name="No Ligation Primer Bulk",
-            description="If True, barcodes will be randomly assigned to \
-                        reads.",
+            description="If true, reads will have linker sequences added and \
+                        random barcodes assigned (current: No ligation \
+                        Primer Bulk).",
             batch_table_column=True,
         ),
         "upload_to_slims": LatchParameter(
