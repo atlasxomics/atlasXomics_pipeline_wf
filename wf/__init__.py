@@ -592,10 +592,10 @@ metadata = LatchMetadata(
             batch_table_column=True,
         ),
         "noLigation_bulk": LatchParameter(
-            display_name="No Ligation Primer Bulk",
+            display_name="no-ligation primer bulk",
             description="If true, reads will have linker sequences added and \
-                        random barcodes assigned (current: No ligation \
-                        Primer Bulk).",
+                        random barcodes assigned (current: no-ligation \
+                        primer bulk).",
             batch_table_column=True,
         ),
         "upload_to_slims": LatchParameter(
