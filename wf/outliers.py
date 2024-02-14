@@ -27,7 +27,7 @@ def get_axis_avgs(
     avgs = [merged.groupby([axis]).median(numeric_only=True)["passed_filters"]
             for axis in ["row", "column"]]
 
-    df = pd.merge(avgs[0], avgs[1], right_index=True, left_index=True)
+    df = pd.merge(avgs[0], avgs[1], right_index=True, left_index=True, how='outer')
     df.columns = ["row_avg", "col_avg"]
     df.index.name = None
 
