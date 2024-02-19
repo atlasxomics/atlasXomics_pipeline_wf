@@ -27,7 +27,9 @@ def get_axis_avgs(
     avgs = [merged.groupby([axis]).median(numeric_only=True)["passed_filters"]
             for axis in ["row", "column"]]
 
-    df = pd.merge(avgs[0], avgs[1], right_index=True, left_index=True, how='outer')
+    df = pd.merge(
+        avgs[0], avgs[1], right_index=True, left_index=True, how="outer"
+    )
     df.columns = ["row_avg", "col_avg"]
     df.index.name = None
 
@@ -96,14 +98,14 @@ def plotting_task(
         row_y = df["row_avg"]
         row_colors = df["row_outlier"]
 
-        ax[i].bar(    
+        ax[i].bar(
             [x + 1 for x in row_x[~row_colors]],
             row_y[~row_colors],
             color="blue",
             edgecolor=(0, 0, 0),
         )
 
-        ax[i].bar(    
+        ax[i].bar(
             [x + 1 for x in row_x[row_colors]],
             row_y[row_colors],
             color="red",
