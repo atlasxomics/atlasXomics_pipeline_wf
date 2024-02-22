@@ -6,6 +6,7 @@ COPY bc50.txt /root/bc50.txt
 COPY bc50_old.txt /root/bc50_old.txt
 COPY bc96.txt /root/bc96.txt
 COPY bc96_fg.txt /root/bc96_fg.txt
+COPY bcFG210v4.txt /root/bcFG210v4.txt
 
 COPY blacklist /root/blacklist
 COPY hg38_chrom_sizes.txt /root/hg38_chrom_sizes.txt
