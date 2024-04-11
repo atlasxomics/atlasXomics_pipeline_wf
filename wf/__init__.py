@@ -486,7 +486,7 @@ def upload_latch_registry(
     results_dir: LatchDir,
     table_id: str = "761"
 ):
-    
+
     acc = Account.current()
 
     if acc.id == '13502':
@@ -521,8 +521,6 @@ def upload_latch_registry(
                 return
     else:
         return
-
-
 
 
 metadata = LatchMetadata(
