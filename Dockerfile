@@ -32,10 +32,12 @@ RUN pip install --upgrade pip
 COPY requirements.txt /root/requirements.txt
 RUN python3 -m pip install -r requirements.txt
 
-# Install pycisTopic, before it required python3.11
+# Install pycisTopic, before it required python3.11; pin scipy install
+RUN rm -r /root/pycisTopic
 RUN git clone https://github.com/aertslab/pycisTopic.git && \
     cd /root/pycisTopic && \
-    git checkout 284c5a5 && \
+    git checkout e9b0e1a && \
+    sed -i 's/scipy/scipy==1.12/' requirements.txt && \
     pip install . && \
     cd /root
 
