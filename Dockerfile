@@ -33,7 +33,6 @@ COPY requirements.txt /root/requirements.txt
 RUN python3 -m pip install -r requirements.txt
 
 # Install pycisTopic, before it required python3.11; pin scipy install
-RUN rm -r /root/pycisTopic
 RUN git clone https://github.com/aertslab/pycisTopic.git && \
     cd /root/pycisTopic && \
     git checkout e9b0e1a && \
