@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
 
-from latch import large_task, small_task, medium_task, workflow
+from latch import custom_task, large_task, medium_task, small_task, workflow
 from latch.account import Account
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
@@ -302,7 +302,7 @@ def alignment(
     )
 
 
-@large_task
+@custom_task(cpu=30, memory=340, storage_gib=500)
 def statistics(
     r2: LatchFile,
     frag: LatchFile,
