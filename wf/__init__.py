@@ -29,6 +29,14 @@ import wf.lims as lims
 from wf.outliers import plotting_task
 
 
+"""
+small_task: 2 cpus, 4 gigs of memory, 0 gpus
+medium_task: 32 cpus, 128 gigs of memory, 0 gpus
+large_task: 96 cpus, 192 gig sof memory, 0 gpus
+small_gpu_task: 8 cpus, 32 gigs of memory, 1 gpu (24 gigs of VRAM, 9,216 cuda cores)
+large_gpu_task: 31 cpus, 120 gigs of memory, 1 gpu (24 gigs of VRAM, 9,216 cuda cores)
+"""
+
 class BarcodeFile(Enum):
     x50 = "bc50.txt"
     x50_old = "bc50_old.txt"
@@ -36,8 +44,9 @@ class BarcodeFile(Enum):
     x96_fg = "bc96_fg.txt"
     x210 = "bcFG210v4.txt"
 
-
-@large_task(retries=0)
+#@custom_task(cpu=45, memory=192, storage_gib=5000, retries=0)
+#@large_task(retries=0)
+@custom_task(cpu=45, memory=192, storage_gib=5000, retries=0)
 def filtering(
     r1: LatchFile,
     r2: LatchFile,
@@ -175,8 +184,9 @@ def process_bc_task(
             f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R2.fastq.gz"
         )
 
-
+#@custom_task(cpu=45, memory=192, storage_gib=5000, retries=0)
 @large_task(retries=0)
+@custom_task(cpu=45, memory=192, storage_gib=5000, retries=0)
 def alignment(
     r1: LatchFile,
     r2: LatchFile,
