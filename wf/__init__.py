@@ -162,11 +162,11 @@ def process_bc_task(
     ]
 
     if bulk:
-        _bc_cmd.append('-b')
-        _bc_cmd.append('-cm')
+        _bc_cmd.append("-b")
+        _bc_cmd.append("-cm")
     if noLigation_bulk:
-        _bc_cmd.append('-nl')
-        _bc_cmd.append('-cm')
+        _bc_cmd.append("-nl")
+        _bc_cmd.append("-cm")
 
     subprocess.run(_bc_cmd)
 
@@ -224,7 +224,7 @@ def alignment(
 
     try:
         # Open the log file for writing
-        with open(str(logfile), 'w') as log_file:
+        with open(str(logfile), "w") as log_file:
 
             # Start the subprocess with stdout redirected to a pipe
             process = subprocess.Popen(
@@ -238,7 +238,7 @@ def alignment(
             # Continuously read and log the output as it becomes available
             while True:
                 output_line = process.stdout.readline()
-                if output_line == '':
+                if output_line == "":
                     break  # End of output
                 log_file.write(output_line)
                 log_file.flush()
@@ -252,34 +252,36 @@ def alignment(
 
     outdir = Path("chromap_output/").resolve()
     os.mkdir(outdir)
+
     temp_file = Path(f"{outdir}/temp.bed").resolve()
     unzip_file = Path(f"{outdir}/fragments.tsv").resolve()
     output_file = Path(f"{outdir}/fragments.tsv.gz").resolve()
     output_file_index = Path(f"{outdir}/fragments.tsv.gz.tbi").resolve()
-    subprocess.run(["echo", str("add -1 to barcodes and zip the file!!")])
 
-    with open(str(temp_file), 'w') as fw:
-        subprocess.run(
-            ['awk', 'BEGIN{FS=OFS=" "}{$4=$4"-1"}4', str(fragment)], stdout=fw
+    subprocess.run(["echo", str("add -1 to barcodes and zip the file!!")])
+    with open(str(temp_file), "w") as fw:
+        subprocess.run(  # awk expression needs to be ""; don't change...
+            ["awk", 'BEGIN{FS=OFS=" "}{$4=$4"-1"}4', str(fragment)],
+            stdout=fw
         )
 
     subprocess.run(
         ["echo", str("make sure the out put file is tab delimited!")]
     )
 
-    with open(str(unzip_file), 'w') as fw:
-        subprocess.run(['sed', 's/ /\t/g', str(temp_file)], stdout=fw)
+    with open(str(unzip_file), "w") as fw:
+        subprocess.run(["sed", "s/ /\t/g", str(temp_file)], stdout=fw)
 
     subprocess.run(
         ["echo", str("use tabix bgzip to convert bed file into gz file")]
     )
 
-    with open(str(output_file), 'w') as fw:
-        subprocess.run(['bgzip', '-c', str(unzip_file)], stdout=fw)
+    with open(str(output_file), "w") as fw:
+        subprocess.run(["bgzip", "-c", str(unzip_file)], stdout=fw)
 
-    with open(str(output_file_index), 'w') as fw:
+    with open(str(output_file_index), "w") as fw:
         subprocess.run(
-            ['tabix', '-p', 'bed', str(output_file), '-f'],  stdout=fw
+            ["tabix", "-p", "bed", str(output_file), "-f"],  stdout=fw
         )
 
     return (
@@ -329,7 +331,9 @@ def statistics(
     tmp1 = Path(f"{work_dir}/tmp1.txt").resolve()
     tmp2 = Path(f"{work_dir}/tmp2.txt").resolve()
     fastq_bc_inlst_freq = Path(f"{work_dir}/fastq_bc_inlst_freq.txt").resolve()
-    chromap_bc_inlst_freq = Path(f"{work_dir}/chromap_bc_inlst_freq.txt").resolve()
+    chromap_bc_inlst_freq = Path(
+        f"{work_dir}/chromap_bc_inlst_freq.txt"
+    ).resolve()
     singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
 
     positions_paths = {
@@ -343,71 +347,71 @@ def statistics(
     positions_file = Path(positions_path.local_path).resolve()
 
     # Extract genome name from local genome ref dir
-    genome_id = (glob.glob(f"{species.local_path}/*.fa")[0]
-                     .split("/")[-1].split("_")[0])
+    genome_id = (
+        glob.glob(f"{species.local_path}/*.fa")[0].split("/")[-1].split("_")[0]
+    )
 
     # Assign genome metadata
     genome_dict = {
-            "GRCh38": ["hs", "hg38_chrom_sizes.txt", "blacklist/hg38-blacklist.v2.bed"],
-            "GRCm38": ["mm", "mm10_chrom_sizes.txt", "blacklist/mm10-blacklist.v2.bed"],
-            "Rnor6": ["rnor6", "rn6_chrom_sizes.txt", None]
+        "GRCh38": ["hs", "hg38_chrom_sizes.txt", "blacklist/hg38-blacklist.v2.bed"],
+        "GRCm38": ["mm", "mm10_chrom_sizes.txt", "blacklist/mm10-blacklist.v2.bed"],
+        "Rnor6": ["rnor6", "rn6_chrom_sizes.txt", None]
     }
 
     _pyct_cmd = [
-            "python",
-            "pycis.py",
-            "-f",
-            frag.local_path,
-            "-i",
-            run_id,
-            "-g",
-            genome_dict[genome_id][0],
-            "-c",
-            Path(genome_dict[genome_id][1]).resolve(),
-            "-k",
-            Path(genome_dict[genome_id][2]).resolve(),
-            "-w",
-            whitelist,
-            "-d",
-            work_dir,
-            "-t",
-            tmp_dir,
-            "-p",
-            positions_file
+        "python",
+        "pycis.py",
+        "-f",
+        frag.local_path,
+        "-i",
+        run_id,
+        "-g",
+        genome_dict[genome_id][0],
+        "-c",
+        Path(genome_dict[genome_id][1]).resolve(),
+        "-k",
+        Path(genome_dict[genome_id][2]).resolve(),
+        "-w",
+        whitelist,
+        "-d",
+        work_dir,
+        "-t",
+        tmp_dir,
+        "-p",
+        positions_file
     ]
 
     subprocess.run(_pyct_cmd)
 
     _sc_cmd = [
-            "python",
-            "singlecellsummary.py",
-            "-r2",
-            r2.local_path,
-            "-bc1",
-            str(bc1),
-            "-bc2",
-            str(bc2),
-            "-bed",
-            bed.local_path,
-            "-w",
-            whitelist,
-            "-tmp1",
-            str(tmp1),
-            "-tmp2",
-            str(tmp2),
-            "-fbif",
-            str(fastq_bc_inlst_freq),
-            "-cbif",
-            str(chromap_bc_inlst_freq),
-            "-i",
-            run_id,
-            "-g",
-            genome_dict[genome_id][0],
-            "-l",
-            logfile,
-            "-v",
-            open(Path("version").resolve(), 'r').read()
-
+        "python",
+        "singlecellsummary.py",
+        "-r2",
+        r2.local_path,
+        "-bc1",
+        str(bc1),
+        "-bc2",
+        str(bc2),
+        "-bed",
+        bed.local_path,
+        "-w",
+        whitelist,
+        "-tmp1",
+        str(tmp1),
+        "-tmp2",
+        str(tmp2),
+        "-fbif",
+        str(fastq_bc_inlst_freq),
+        "-cbif",
+        str(chromap_bc_inlst_freq),
+        "-i",
+        run_id,
+        "-g",
+        genome_dict[genome_id][0],
+        "-l",
+        logfile,
+        "-v",
+        open(Path("version").resolve(), "r").read()
     ]
 
     subprocess.run(_sc_cmd)
@@ -417,19 +421,19 @@ def statistics(
 
     print("Creating peak files!")
     _report_cmd = [
-            'Rscript',
-            '/root/peak_files.R',
-            frag.local_path,
-            peak_file,
-            genome_dict[genome_id][0],
-            run_id,
+        "Rscript",
+        "/root/peak_files.R",
+        frag.local_path,
+        peak_file,
+        genome_dict[genome_id][0],
+        run_id,
     ]
 
     subprocess.run(_report_cmd)
 
     return LatchDir(
-            str(work_dir),
-            f"latch:///chromap_outputs/{run_id}/Statistics"
+        str(work_dir),
+        f"latch:///chromap_outputs/{run_id}/Statistics"
     )
 
 
@@ -455,20 +459,20 @@ def lims_task(
             pk = lims.get_pk(ng_id, slims)
         else:
             try:
-                pk = lims.get_pk(run_id.split('_')[-1], slims)
+                pk = lims.get_pk(run_id.split("_")[-1], slims)
             except IndexError:
-                logging.warning('Invalid SLIMS ng_id.')
+                logging.warning("Invalid SLIMS ng_id.")
                 message(
-                    typ='warning',
+                    typ="warning",
                     data={
                         "title": "SLIMS fail", "body": "Invalid SLIMS ng_id."
                     }
                 )
                 return results_dir
 
-        payload['rslt_fk_content'] = pk
-        payload['rslt_fk_test'] = 39
-        payload['rslt_value'] = 'upload'
+        payload["rslt_fk_content"] = pk
+        payload["rslt_fk_test"] = 39
+        payload["rslt_value"] = "upload"
 
         logging.info(f"upload succeeded: {lims.push_result(payload, slims)}")
 
@@ -489,7 +493,7 @@ def upload_latch_registry(
 
     acc = Account.current()
 
-    if acc.id == '13502':
+    if acc.id == "13502":
 
         table = Table(table_id)
 
@@ -687,19 +691,19 @@ def total_wf(
     )
 
     bulkd_r2 = process_bc_task(
-                r2=filtered_r2,
-                run_id=run_id,
-                bulk=bulk,
-                noLigation_bulk=noLigation_bulk,
-                barcode_file=barcode_file
+        r2=filtered_r2,
+        run_id=run_id,
+        bulk=bulk,
+        noLigation_bulk=noLigation_bulk,
+        barcode_file=barcode_file
     )
 
     chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
-                r1=filtered_r1,
-                r2=bulkd_r2,
-                run_id=run_id,
-                species=species,
-                barcode_file=barcode_file
+        r1=filtered_r1,
+        r2=bulkd_r2,
+        run_id=run_id,
+        species=species,
+        barcode_file=barcode_file
     )
 
     reports = statistics(
@@ -748,10 +752,10 @@ LaunchPlan(
     }
 )
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     r2 = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz")
-    species = LatchDir("latch://13502.account/Chromap_references/Refdata_scATAC_MAESTRO_GRCm38_1.1.0")
+    species = LatchDir("latch://13502.account/Chromap_references/Mouse")
     bed = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
     frag = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/fragments.tsv.gz")
     logfile = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/chromap_log.txt")

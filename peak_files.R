@@ -6,8 +6,8 @@ library(EnsDb.Mmusculus.v79)
 library(EnsDb.Hsapiens.v86)
 library(GenomicRanges)
 library(rhdf5)
-library(Signac)
 library(Seurat)
+library(Signac)
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -30,21 +30,20 @@ names(df) <- c(
 )
 peaks <- makeGRangesFromDataFrame(df)
 
-rawdata <- fragpath
 dataPath <- "/root/Statistics/"
-file.copy(rawdata, dataPath, overwrite = TRUE)
-system('cd "/root/Statistics/"; tabix -p bed fragments.tsv.gz -f')
 
+rawdata <- fragpath
+file.copy(rawdata, dataPath, overwrite = TRUE)
+system("cd '/root/Statistics/'; tabix -p bed fragments.tsv.gz -f")
 
 rawdata <- "/root/Statistics/scATAC/quality_control/sample_metrics.pdf"
-dataPath <- "/root/Statistics/"
 file.copy(rawdata, dataPath, overwrite = TRUE)
 
 file.rename(
   "/root/Statistics/sample_metrics.pdf", "/root/Statistics/qc_plot.pdf"
 )
 
-file.remove("'/root/Statistics/fragments_edited.tsv.gz")
+file.remove("/root/Statistics/fragments_edited.tsv.gz")
 
 fragpath <- "/root/Statistics/fragments.tsv.gz"
 frags <- CreateFragmentObject(path = fragpath, cells = counts$CB)
@@ -57,12 +56,11 @@ if (species == "mm") {
   genome1 <- seqlengths(BSgenome.Rnorvegicus.UCSC.rn6)
 }
 
-
 bin_matrix <- GenomeBinMatrix(
-  fragments <- frags,
-  genome <- genome1,
-  binsize <- 5000,
-  verbose <- TRUE
+  fragments = frags,
+  genome = genome1,
+  binsize = 5000,
+  verbose = TRUE
 )
 
 if (species == "mm") {
@@ -106,53 +104,70 @@ write_dgCMatrix_h5 <- function(
   rhdf5::h5createGroup(h5_target, ref_name)
 
   # Store sample ids (barcodes) and gene names
-  rhdf5::h5write(colnames(mat),
-                 h5_target,
-                 paste0("/", ref_name, "/barcodes"))
-  rhdf5::h5write(rownames(mat),
-                 h5_target,
-                 paste0("/",  ref_name, "/gene_names"))
+  rhdf5::h5write(
+    colnames(mat),
+    h5_target,
+    paste0("/", ref_name, "/barcodes")
+  )
+  rhdf5::h5write(
+    rownames(mat),
+    h5_target,
+    paste0("/",  ref_name, "/gene_names")
+  )
 
   if (is.null(gene_ids)) {
     gene_ids <- rownames(mat)
   }
 
-  rhdf5::h5write(gene_ids,
-                 h5_target,
-                 paste0("/", ref_name, "/gene"))
+  rhdf5::h5write(
+    gene_ids,
+    h5_target,
+    paste0("/", ref_name, "/gene")
+  )
 
   # Store dimensions as shape
-  rhdf5::h5write(dim(mat),
-                 h5_target,
-                 paste0("/", ref_name, "/shape"))
+  rhdf5::h5write(
+    dim(mat),
+    h5_target,
+    paste0("/", ref_name, "/shape")
+  )
 
   # Store values from mat@x as data
-  rhdf5::h5createDataset(h5_target,
-                         paste0("/", ref_name, "/data"),
-                         dims = length(mat@x),
-                         storage.mode = "integer",
-                         chunk = 1000,
-                         level = 4)
-  rhdf5::h5write(mat@x,
-                 h5_target,
-                 paste0("/", ref_name, "/data"))
+  rhdf5::h5createDataset(
+    h5_target,
+    paste0("/", ref_name, "/data"),
+    dims = length(mat@x),
+    storage.mode = "integer",
+    chunk = 1000,
+    level = 4
+  )
+  rhdf5::h5write(
+    mat@x,
+    h5_target,
+    paste0("/", ref_name, "/data")
+  )
 
   # Store row indices from mat@i as indices
-  rhdf5::h5createDataset(h5_target,
-                         paste0("/", ref_name, "/indices"),
-                         dims = length(mat@i),
-                         storage.mode = "integer",
-                         chunk = 1000,
-                         level = 4)
-  rhdf5::h5write(mat@i,
-                 h5_target,
-                 paste0("/", ref_name, "/indices"))
+  rhdf5::h5createDataset(
+    h5_target,
+    paste0("/", ref_name, "/indices"),
+    dims = length(mat@i),
+    storage.mode = "integer",
+    chunk = 1000,
+    level = 4
+  )
+  rhdf5::h5write(
+    mat@i,
+    h5_target,
+    paste0("/", ref_name, "/indices")
+  )
 
   # Store column pointers from mat@p as indptr
-  rhdf5::h5write(mat@p,
-                 h5_target,
-                 paste0("/", ref_name, "/indptr"))
-
+  rhdf5::h5write(
+    mat@p,
+    h5_target,
+    paste0("/", ref_name, "/indptr")
+  )
 }
 
 h5_target <- paste0("/root/Statistics/", run_id, "_raw_peak_bc_matrix.h5")
@@ -174,16 +189,14 @@ file.remove("/root/Statistics/bc2.txt")
 file.remove("/root/Statistics/fastq_bc_inlst_freq.txt")
 file.remove("/root/Statistics/chromap_bc_inlst_freq.txt")
 
-print(
-  r"(
-
+logo = c(
+  r"[
     _     _    _             __  __                   _ 
    / \   | |_ | |  __ _  ___ \ \/ /  ___   _ __ ___  (_)  ___  ___ 
   / _ \  | __|| | / _` |/ __| \  /  / _ \ | '_ ` _ \ | | / __|/ __|
  / ___ \ | |_ | || (_| |\__ \ /  \ | (_) || | | | | || || (__ \__ \
 /_/   \_\ \__||_| \__,_||___//_/\_\ \___/ |_| |_| |_||_| \___||___/
 
-
- 
-  )"
+  ]"
 )
+message(logo)
