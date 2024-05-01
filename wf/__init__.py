@@ -44,9 +44,8 @@ class BarcodeFile(Enum):
     x96_fg = "bc96_fg.txt"
     x210 = "bcFG210v4.txt"
 
-#@custom_task(cpu=45, memory=192, storage_gib=5000, retries=0)
-#@large_task(retries=0)
-@custom_task(cpu=45, memory=192, storage_gib=5000, retries=0)
+
+@custom_task(cpu=45, memory=192, storage_gib=500)
 def filtering(
     r1: LatchFile,
     r2: LatchFile,
@@ -135,7 +134,7 @@ def filtering(
     )
 
 
-@medium_task(retries=0)
+@medium_task(retries=0)  # uses 2cpu total, can try this one next
 def process_bc_task(
     r2: LatchFile,
     run_id: str,
@@ -184,9 +183,8 @@ def process_bc_task(
             f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R2.fastq.gz"
         )
 
-#@custom_task(cpu=45, memory=192, storage_gib=5000, retries=0)
-@large_task(retries=0)
-@custom_task(cpu=45, memory=192, storage_gib=5000, retries=0)
+
+@custom_task(cpu=45, memory=192, storage_gib=500)
 def alignment(
     r1: LatchFile,
     r2: LatchFile,
