@@ -65,7 +65,7 @@ def filtering(
         f"outm1={str(filtered_r1_l1)}",
         f"outm2={str(filtered_r2_l1)}",
         "skipr1=t",
-        "threads=96",
+        "threads=42",
         "-Xmx196g",
         "k=30",
         "mm=f",
@@ -95,7 +95,7 @@ def filtering(
         f"outm1={str(filtered_r1_l2)}",
         f"outm2={str(filtered_r2_l2)}",
         "skipr1=t",
-        "threads=96",
+        "threads=42",
         "-Xmx196g",
         "k=30",
         "mm=f",
@@ -134,7 +134,7 @@ def filtering(
     )
 
 
-@medium_task(retries=0)  # uses 2cpu total, can try this one next
+@custom_task(cpu=5, memory=128, storage_gib=500)  # prev was med task
 def process_bc_task(
     r2: LatchFile,
     run_id: str,
@@ -209,7 +209,7 @@ def alignment(
     _chromap_command = [
         "/root/chromap/chromap",
         "-t",
-        "96",
+        "42",
         "--preset",
         "atac",
         "-x",
@@ -310,7 +310,7 @@ def alignment(
     )
 
 
-@custom_task(cpu=30, memory=340, storage_gib=500)
+@custom_task(cpu=16, memory=340, storage_gib=500)  # was 30 cpu
 def statistics(
     r2: LatchFile,
     frag: LatchFile,
