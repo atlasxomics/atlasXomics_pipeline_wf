@@ -355,7 +355,7 @@ def statistics(
     genome_dict = {
         "GRCh38": ["hs", "hg38_chrom_sizes.txt", "blacklist/hg38-blacklist.v2.bed"],
         "GRCm38": ["mm", "mm10_chrom_sizes.txt", "blacklist/mm10-blacklist.v2.bed"],
-        "Rnor6": ["rnor6", "rn6_chrom_sizes.txt", None]
+        "Rnor6": ["rnor6", "rn6_chrom_sizes.txt", "na"]
     }
 
     _pyct_cmd = [
@@ -754,17 +754,17 @@ LaunchPlan(
 
 if __name__ == "__main__":
 
-    r2 = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/preprocessing/slims_D00000_NG00000_linker2_R2.fastq.gz")
-    species = LatchDir("latch://13502.account/Chromap_references/Mouse")
-    bed = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/aln.bed")
-    frag = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/fragments.tsv.gz")
-    logfile = LatchFile("latch://13502.account/chromap_outputs/slims_D00000_NG00000/chromap_output/chromap_log.txt")
+    r2 = LatchFile("latch://13502.account/chromap_outputs/D01700_NG04433/preprocessing/D01700_NG04433_linker2_R2.fastq.gz")
+    species = LatchDir("latch://13502.account/Chromap_references/Rnor6")
+    bed = LatchFile("latch://13502.account/chromap_outputs/D01700_NG04433/chromap_output/aln.bed")
+    frag = LatchFile("latch://13502.account/chromap_outputs/D01700_NG04433/chromap_output/fragments.tsv.gz")
+    logfile = LatchFile("latch://13502.account/chromap_outputs/D01700_NG04433/chromap_output/chromap_log.txt")
 
     statistics(
         r2=r2,
         species=species,
-        run_id="test",
-        barcode_file=BarcodeFile.x50,
+        run_id="rat_fix",
+        barcode_file=BarcodeFile.x96_fg,
         bed=bed,
         frag=frag,
         logfile=logfile

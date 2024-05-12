@@ -2,12 +2,14 @@ library(BSgenome)
 library(BSgenome.Hsapiens.UCSC.hg38)
 library(BSgenome.Mmusculus.UCSC.mm10)
 library(BSgenome.Rnorvegicus.UCSC.rn6)
-library(EnsDb.Mmusculus.v79)
 library(EnsDb.Hsapiens.v86)
+library(EnsDb.Mmusculus.v79)
+library(EnsDb.Rnorvegicus.v79)
 library(GenomicRanges)
 library(rhdf5)
 library(Seurat)
 library(Signac)
+
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -24,9 +26,16 @@ run_id <- args[4]
 counts <- CountFragments(fragments = fragpath, verbose = FALSE)
 df <- read.table(narrowPeak, sep = "\t")
 names(df) <- c(
-  "chr", "start", "end", "name", "score", "strand",
-  "fold_change", "neg_log10pvalue_summit",
-  "neg_log10qvalue_summit", "relative_summit_position"
+  "chr",
+  "start",
+  "end",
+  "name",
+  "score",
+  "strand",
+  "fold_change",
+  "neg_log10pvalue_summit",
+  "neg_log10qvalue_summit",
+  "relative_summit_position"
 )
 peaks <- makeGRangesFromDataFrame(df)
 
@@ -46,17 +55,17 @@ file.rename(
 file.remove("/root/Statistics/fragments_edited.tsv.gz")
 
 fragpath <- "/root/Statistics/fragments.tsv.gz"
-frags <- CreateFragmentObject(path = fragpath, cells = counts$CB)
+frags <- Signac::CreateFragmentObject(path = fragpath, cells = counts$CB)
 
 if (species == "mm") {
   genome1 <- seqlengths(BSgenome.Mmusculus.UCSC.mm10)
 } else if (species == "hs") {
   genome1 <- seqlengths(BSgenome.Hsapiens.UCSC.hg38)
-} else {
+} else if (species == "rnor6") {
   genome1 <- seqlengths(BSgenome.Rnorvegicus.UCSC.rn6)
 }
 
-bin_matrix <- GenomeBinMatrix(
+bin_matrix <- Signac::GenomeBinMatrix(
   fragments = frags,
   genome = genome1,
   binsize = 5000,
@@ -67,21 +76,21 @@ if (species == "mm") {
   genome2 <- "mm10"
 } else if (species == "hs") {
   genome2 <- "hg38"
-} else {
+} else if (species == "rnor6") {
   genome2 <- "rn6"
 }
 
-chrom <- CreateChromatinAssay(
+chrom <- Signac::CreateChromatinAssay(
   counts = bin_matrix,
   genome = genome2,
   fragments = fragpath
 )
 
-seurat_obj <- CreateSeuratObject(counts = chrom, assay = "ATAC")
+seurat_obj <- Seurat::CreateSeuratObject(counts = chrom, assay = "ATAC")
 
 # convert peaks to count matrix, quantify counts in each peak
-macs2_counts <- FeatureMatrix(
-  fragments = Fragments(seurat_obj),
+macs2_counts <- Signac::FeatureMatrix(
+  fragments = Signac::Fragments(seurat_obj),
   features = peaks,
   sep = c(":", "-"),
   cells = colnames(seurat_obj)
@@ -92,7 +101,8 @@ write_dgCMatrix_h5 <- function(
   cols_are = "gene_names",
   h5_target,
   ref_name = "mm10-1.2.0_premrna",
-  gene_ids = NULL) {
+  gene_ids = NULL
+) {
 
   if (grepl("gene", cols_are)) {
     mat <- Matrix::t(mat)
@@ -189,7 +199,7 @@ file.remove("/root/Statistics/bc2.txt")
 file.remove("/root/Statistics/fastq_bc_inlst_freq.txt")
 file.remove("/root/Statistics/chromap_bc_inlst_freq.txt")
 
-logo = c(
+logo <- c(
   r"[
     _     _    _             __  __                   _ 
    / \   | |_ | |  __ _  ___ \ \/ /  ___   _ __ ___  (_)  ___  ___ 
