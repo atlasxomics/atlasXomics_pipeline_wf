@@ -1,5 +1,5 @@
 **/__pycache__/
-.latch/.logs/
+.latch/
 wf/creds.py
 **/*.ipynb*
 .latch_report.tar.gz

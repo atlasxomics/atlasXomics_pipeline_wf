@@ -6,6 +6,7 @@ import pathlib
 import pickle
 import pyranges as pr
 import pybiomart as pbm
+import sys
 
 from pycisTopic.qc import *
 from pycisTopic.cistopic_class import *
@@ -30,7 +31,7 @@ fragment = args["f"]
 run_id = args["i"]
 genome = args["g"]
 chrsize = args["c"]
-black_lst = args["k"]
+black_lst = args["k"] if genome != "rnor6" else None
 whitelist = args["w"]
 work_dir = args["d"]
 tmp_dir = args["t"]
@@ -124,12 +125,14 @@ infile.close()
 macs_path = "/usr/local/bin/macs2"
 outdir = work_dir + "/scATAC/consensus_peak_calling/MACS/"
 
+genome_size = genome if genome != "rnor6" else "2.9e9"
+
 # Run peak calling
 narrow_peaks_dict = peak_calling(
     macs_path,
     bed_paths,
     outdir,
-    genome_size=genome,
+    genome_size=genome_size,
     n_cpu=77,
     input_format="BEDPE",
     shift=73,
@@ -140,7 +143,7 @@ narrow_peaks_dict = peak_calling(
 )
 
 peak_half_width = 250
-consensus_peaks = get_consensus_peaks(
+consensus_peaks = get_consensus_peaks( # iterative_peak_calling
    narrow_peaks_dict,
    peak_half_width,
    chromsizes=chromsizes,
@@ -156,16 +159,21 @@ consensus_peaks.to_bed(
 )
 
 print("Quality control started ...")
-
-if (genome == "mm"):
+if genome == "mm":
     dataset = pbm.Dataset(
        name="mmusculus_gene_ensembl",
        host="http://nov2020.archive.ensembl.org/"
     )
-else:
+elif genome == "hs":
     dataset = pbm.Dataset(
         name="hsapiens_gene_ensembl", host="http://www.ensembl.org"
     )
+elif genome == "rnor6":
+    dataset = pbm.Dataset(
+        name="rnorvegicus_gene_ensembl", host="http://www.ensembl.org"
+    )
+else:
+    raise Exception("Incorrect genome id.")
 
 annot = dataset.query(
    attributes=[
@@ -179,16 +187,19 @@ annot = dataset.query(
 annot["Chromosome/scaffold name"] = annot[
    "Chromosome/scaffold name"
 ].to_numpy(dtype=str)
+
 filter = annot["Chromosome/scaffold name"].str.contains("CHR|GL|JH|MT")
 annot = annot[~filter]
+
 annot["Chromosome/scaffold name"] = annot[
    "Chromosome/scaffold name"
 ].str.replace(r"(\b\S)", r"chr\1")
+
 annot.columns = ["Chromosome", "Start", "Strand", "Gene", "Transcript_type"]
 annot = annot[annot.Transcript_type == "protein_coding"]
 
 path_to_regions = {
-   run_id: work_dir + "/scATAC/consensus_peak_calling/consensus_regions.bed"
+   run_id: f"{work_dir}/scATAC/consensus_peak_calling/consensus_regions.bed"
 }
 
 sys.stderr = open(os.devnull, "w")  # silence stderr
@@ -219,24 +230,24 @@ metadata_bc, profile_data_dict = compute_qc_stats(
 
 sys.stderr = sys.__stderr__  # unsilence stderr
 
-if not os.path.exists(work_dir + "/scATAC/quality_control"):
-    os.makedirs(work_dir + "/scATAC/quality_control")
+if not os.path.exists(f"{work_dir}/scATAC/quality_control"):
+    os.makedirs(f"{work_dir}/scATAC/quality_control")
 
 pickle.dump(
     metadata_bc,
-    open(work_dir + "/scATAC/quality_control/metadata_bc.pkl", "wb")
+    open(f"{work_dir}/scATAC/quality_control/metadata_bc.pkl", "wb")
 )
 
 pickle.dump(
     profile_data_dict,
-    open(work_dir + "/scATAC/quality_control/profile_data_dict.pkl", "wb")
+    open(f"{work_dir}/scATAC/quality_control/profile_data_dict.pkl", "wb")
 )
 
-with open(work_dir + "/scATAC/quality_control/metadata_bc.pkl", "wb") as f:
+with open(f"{work_dir}/scATAC/quality_control/metadata_bc.pkl", "wb") as f:
     pickle.dump(metadata_bc, f)
 
 with open(
-    work_dir + "/scATAC/quality_control/profile_data_dict.pkl", "wb"
+    f"{work_dir}/scATAC/quality_control/profile_data_dict.pkl", "wb"
 ) as f:
     pickle.dump(profile_data_dict, f)
 
@@ -245,7 +256,7 @@ plot_sample_metrics(
     insert_size_distribution_xlim=[0, 600],
     ncol=5,
     plot=True,
-    save=work_dir + "/scATAC/quality_control/sample_metrics.pdf")
+    save=f"{work_dir}/scATAC/quality_control/sample_metrics.pdf")
 
 qc_filters = {
     run_id: {
@@ -323,34 +334,31 @@ for runID in metadata_bc:
         (set(FRIP_NR_FRAG_filterDict[runID]) &
          set(TSS_NR_FRAG_filterDict[runID]))
     )
+    bc_len = len(bc_passing_filters[runID])
     print(
-        f"{len(bc_passing_filters[runID])} barcodes passed filters for sample {runID}"
+        f"{bc_len} barcodes passed filters for sample {runID}"
     )
 
 with open(
-    work_dir + "/scATAC/quality_control/bc_passing_filters.pkl", "wb"
+    f"{work_dir}/scATAC/quality_control/bc_passing_filters.pkl", "wb"
 ) as f:
     pickle.dump(bc_passing_filters, f)
 
 metadata_bc = pickle.load(
     open(
-        os.path.join(work_dir + "/scATAC/quality_control/metadata_bc.pkl"),
+        os.path.join(f"{work_dir}/scATAC/quality_control/metadata_bc.pkl"),
         "rb"
     )
 )
-
-# note we use twice the same regions!
+# n.b. we use the same regions twice
 path_to_regions = {
     run_id: os.path.join(
-        work_dir + "/scATAC/consensus_peak_calling/consensus_regions.bed"
+        f"{work_dir}/scATAC/consensus_peak_calling/consensus_regions.bed"
     )
 }
-
-path_to_blacklist = black_lst
-
 metadata_bc = pickle.load(
     open(
-        os.path.join(work_dir + "/scATAC/quality_control/metadata_bc.pkl"),
+        os.path.join(f"{work_dir}/scATAC/quality_control/metadata_bc.pkl"),
         "rb"
     )
 )
@@ -362,9 +370,8 @@ bc_passing_filters = pickle.load(
         "rb"
     )
 )
-
 cistopic_obj_list = [
-    create_cistopic_object_from_fragments(
+    create_cistopic_object_from_fragments( # cistopic_class
         path_to_fragments=fragments_dict[key],
         path_to_regions=path_to_regions[key],
         path_to_blacklist=black_lst,
@@ -372,14 +379,15 @@ cistopic_obj_list = [
         valid_bc=bc_passing_filters[key],
         n_cpu=77,
         use_polars=False,  # True gives TypeError
-        project=key)
+        project=key
+    )
     for key in fragments_dict.keys()
 ]
 
 cistopic_obj = merge(cistopic_obj_list)
 
 cistopic_obj.cell_data.to_csv(
-    work_dir + "/cistopic_cell_data.csv", sep=",", header=True
+    f"{work_dir}/cistopic_cell_data.csv", sep=",", header=True
 )
 
 peak_file = pd.read_table(

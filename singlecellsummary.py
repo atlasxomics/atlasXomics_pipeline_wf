@@ -6,6 +6,14 @@ import subprocess
 from ast import literal_eval
 
 
+def chromap_log_stats(log_file, req_string):
+    with open(log_file, "r") as file:
+        for line in file:
+            if req_string in line:
+                val = literal_eval(line.strip().split(": ")[1])
+                return val
+
+
 ap = argparse.ArgumentParser()
 ap.add_argument("-r2", required=True)
 ap.add_argument("-bc1", required=True)
@@ -141,7 +149,7 @@ df_bed.replace(np.nan, 0, inplace=True)
 df_bed = df_bed.sort_values([0], ascending=[True])
 
 # check if chromap find or corrected some barcodes that missed in fastq one!
-missed_barcodes = list(set(df_bed[0].tolist())-set(subset_df[0].tolist()))
+missed_barcodes = list(set(df_bed[0].tolist()) - set(subset_df[0].tolist()))
 subset_df = subset_df.append(missed_barcodes, ignore_index=True)
 subset_df.replace(np.nan, 0, inplace=True)
 subset_df = subset_df.sort_values([0], ascending=[True])
@@ -154,9 +162,11 @@ singlecell_df = pd.concat([subset_df[1], df_bed[1]], axis=1).dropna()
 singlecell_df.index = subset_df[0]
 singlecell_df.columns = ["total", "passed_filters"]
 singlecell_df.index = singlecell_df.index + "-1"
+
 singlecell_df = singlecell_df[
     singlecell_df.index.isin(cistopic_obj.index)
-    ].reindex(cistopic_obj.index)
+].reindex(cistopic_obj.index)
+
 singlecell_df = pd.concat([singlecell_df, cistopic_obj], axis=1)
 singlecell_df = singlecell_df.drop(["barcode", "Unnamed: 0"], axis=1)
 
@@ -173,19 +183,10 @@ singlecell_df.to_csv(
 )
 print("Output written to singlecell.csv")
 
-
-def chromap_log_stats(log_file, req_string):
-    with open(log_file, "r") as file:
-        for line in file:
-            if req_string in line:
-                val = literal_eval(line.strip().split(": ")[1])
-                return val
-
-
 summary_df = pd.DataFrame(columns=["Sample ID"])
-summary_df.at[0, "Sample ID"] = f"{run_id}"
+summary_df.at[0, "Sample ID"] = run_id
 summary_df.at[0, "Genome"] = genome
-summary_df.at[0, "Pipeline version"] = "AtlasXomics-" + version
+summary_df.at[0, "Pipeline version"] = f"AtlasXomics-{version}"
 summary_df.at[0, "Fraction uniq-aligned reads"] = (
     chromap_log_stats(logfile, "Number of uni-mappings") /
     chromap_log_stats(logfile, "Number of mappings")
@@ -217,10 +218,10 @@ summary_df.at[0, "FRIP"] = max(
         cistopic_obj["FRIP"].median()
     ]
 )
-summary_df.at[0, 'Fraction duplicate reads'] = max(
+summary_df.at[0, "Fraction duplicate reads"] = max(
     [
-        cistopic_obj['Dupl_rate'].mean(),
-        cistopic_obj['Dupl_rate'].median()
+        cistopic_obj["Dupl_rate"].mean(),
+        cistopic_obj["Dupl_rate"].median()
     ]
 )
 summary_df.to_csv("/root/Statistics/summary.csv", header=True, index=False)

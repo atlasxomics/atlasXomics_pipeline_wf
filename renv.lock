@@ -413,6 +413,15 @@
       ],
       "Hash": "53790b2a7c414e74dfd2e6f41a0e4c47"
     },
+    "EnsDb.Rnorvegicus.v79": {
+      "Package": "EnsDb.Rnorvegicus.v79",
+      "Version": "2.99.0",
+      "Source": "Bioconductor",
+      "Requirements": [
+        "ensembldb"
+      ],
+      "Hash": "96482df77587445d4bf533663e8d0dc0"
+    },
     "FNN": {
       "Package": "FNN",
       "Version": "1.1.3.2",
