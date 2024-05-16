@@ -202,7 +202,6 @@ path_to_regions = {
    run_id: f"{work_dir}/scATAC/consensus_peak_calling/consensus_regions.bed"
 }
 
-sys.stderr = open(os.devnull, "w")  # silence stderr
 metadata_bc, profile_data_dict = compute_qc_stats(
     fragments_dict=fragments_dict,
     tss_annotation=annot,
