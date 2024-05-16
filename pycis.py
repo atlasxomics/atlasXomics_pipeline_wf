@@ -227,8 +227,6 @@ metadata_bc, profile_data_dict = compute_qc_stats(
     use_polars=False  # True gives TypeError: __init__() got an unexpected
 )                     # keyword argument 'encoding'.
 
-sys.stderr = sys.__stderr__  # unsilence stderr
-
 if not os.path.exists(f"{work_dir}/scATAC/quality_control"):
     os.makedirs(f"{work_dir}/scATAC/quality_control")
 
