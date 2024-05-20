@@ -304,7 +304,15 @@ def alignment(
     )
 
 
-def allocate_mem(barcode_file: BarcodeFile) -> int:
+def allocate_mem(
+    r2: LatchFile,
+    frag: LatchFile,
+    bed: LatchFile,
+    logfile: LatchFile,
+    species: LatchDir,
+    run_id: str,
+    barcode_file: BarcodeFile
+) -> int:
     return 490 if barcode_file.value == "bcFG210v4.txt" else 192
 
 
@@ -739,22 +747,22 @@ def total_wf(
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
 
-LaunchPlan(
-    total_wf,
-    "demo",
-    {
-        "r1": LatchFile(
-            "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
-        ),
-        "r2": LatchFile(
-            "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
-        ),
-        "run_id": "demo",
-        "skip1": False,
-        "skip2": False,
-        "species": LatchDir("latch:///Chromap_references/Human")
-    }
-)
+# LaunchPlan(
+#     total_wf,
+#     "demo",
+#     {
+#         "r1": LatchFile(
+#             "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
+#         ),
+#         "r2": LatchFile(
+#             "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
+#         ),
+#         "run_id": "demo",
+#         "skip1": False,
+#         "skip2": False,
+#         "species": LatchDir("latch:///Chromap_references/Human")
+#     }
+# )
 
 if __name__ == "__main__":
 
