@@ -45,34 +45,32 @@ genome = args["g"]
 logfile = args["l"]
 version = args["v"]
 
+# Create singlecell.csv
 command1 = ["zcat", r2]
 command2 = ["awk 'NR%4==2'"]
 command3 = ["cut", "-c", "61-68"]
 command4 = ["cut", "-c", "23-30"]
 
-# Open the output file for writing
+# Parse the barcodes from read2 into new files (bc1.txt, bc2.txt)
 with open(str(bc1), "w") as a, open(str(bc2), "w") as b:
 
     process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
-
     process2 = subprocess.Popen(
         command2, stdin=process1.stdout, stdout=subprocess.PIPE, shell=True
     )
     process1.stdout.close()
-
     process3 = subprocess.Popen(command3, stdin=process2.stdout, stdout=a)
     process2.stdout.close()
 
     process1.wait()
     process2.wait()
     process3.wait()
-    process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
 
+    process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
     process2 = subprocess.Popen(
         command2, stdin=process1.stdout, stdout=subprocess.PIPE, shell=True
     )
     process1.stdout.close()
-
     process4 = subprocess.Popen(command4, stdin=process2.stdout, stdout=b)
     process2.stdout.close()
 
@@ -80,18 +78,19 @@ with open(str(bc1), "w") as a, open(str(bc2), "w") as b:
     process2.wait()
     process4.wait()
 
-# make data frame from bc files produced of fastq2
+# Write bc1, bc2 to tmp1.txt
 with open(tmp1, "w") as fw:
     subprocess.run(["paste", bc2, bc1], stdout=fw)
 
+# Write bc1, bc2, bc1bc2 to tmp2.txt
 with open(tmp2, "w") as fw:
     subprocess.run(["awk", "{print $1, $2, $1$2}", tmp1], stdout=fw)
 
-# make sure it is tab delimited
+# Ensure tmp1.txt is tab delimited
 with open(tmp1, "w") as fw:
     subprocess.run(["sed", "s/ /\t/g", tmp2], stdout=fw)
 
-# subset tab delimited file so that only those in white-list remain
+# Subset tab delimited file so that only those in whitelist remain
 awk_command1 = [
     "awk",
     "NR == FNR { criteria[$1] = 1; next } $3 in criteria",
@@ -102,29 +101,33 @@ awk_command1 = [
 try:
     with open(tmp2, "w") as b:
         subprocess.run(awk_command1, stdout=b, check=True)
-    print(f"Subset rows written to {tmp2}")
+    print(f"Barcodes that match whitelist written to {tmp2}")
 except subprocess.CalledProcessError:
-    print("Error occurred while executing the AWK command1")
+    print("Error occurred with 'awk' while filtering barcodes")
 
-# count frequency of each barcode
+# Count the frequency of each barcode
+# Extract filtered, concatenated barcodes from tmp2.txt, write to tmp1.txt
 with open(tmp1, "w") as fw:
     subprocess.run(["cut", "-f3", tmp2], stdout=fw)
 
+# Sort barcodes from tmp1.txt, write to tmp2.txt
 with open(tmp2, "w") as fw:
     subprocess.run(["sort", tmp1], stdout=fw)
 
+# Get barcode counts from tmp2.txt, write to tmp1.txt
 with open(tmp1, "w") as fw:
     subprocess.run(["uniq", "-c", tmp2], stdout=fw)
 
+# Write counts from tmp1.txt to tmp2.txt
 with open(tmp2, "w") as fw:
     subprocess.run(["awk", "{print $2, $1}", tmp1], stdout=fw)
 
+# Write tab-delimited bc counts to fastq_bc_inlst_freq.txt
 with open(fastq_bc_inlst_freq, "w") as fw:
     subprocess.run(["sed", "s/ /\t/g", tmp2], stdout=fw)
 
-# read chromap aln.bed file and count bc frequency
+# Count barcode frequency from aln.bed, write to chromap_bc_inlst_freq.txt
 with open(tmp1, "w") as fw:
-
     subprocess.run(["cut", "-f4", aln], stdout=fw)
 
 with open(tmp2, "w") as fw:
@@ -139,59 +142,49 @@ with open(tmp2, 'w') as fw:
 with open(chromap_bc_inlst_freq, "w") as fw:
     subprocess.run(["sed", "s/ /\t/g", tmp2], stdout=fw)
 
-subset_df = pd.read_csv(fastq_bc_inlst_freq, sep="\t", header=None)
-df_bed = pd.read_csv(chromap_bc_inlst_freq, sep="\t", header=None)
+# Open barcode counts from r2 fastq, aln.bed as DataFrames
+fastq_df = pd.read_csv(fastq_bc_inlst_freq, sep="\t", header=None)
+chromap_df = pd.read_csv(chromap_bc_inlst_freq, sep="\t", header=None)
 
-# check if fastq has barcodes that chromap didn't find!
-missed_barcodes = list(set(subset_df[0].tolist()) - set(df_bed[0].tolist()))
-df_bed = df_bed.append(missed_barcodes, ignore_index=True)
-df_bed.replace(np.nan, 0, inplace=True)
-df_bed = df_bed.sort_values([0], ascending=[True])
+# Check if fastq has barcodes that chromap didn't find, add to chromap_df
+missed_barcodes = list(set(fastq_df[0].tolist()) - set(chromap_df[0].tolist()))
+chromap_df = chromap_df.append(missed_barcodes, ignore_index=True)
 
-# check if chromap find or corrected some barcodes that missed in fastq one!
-missed_barcodes = list(set(df_bed[0].tolist()) - set(subset_df[0].tolist()))
-subset_df = subset_df.append(missed_barcodes, ignore_index=True)
-subset_df.replace(np.nan, 0, inplace=True)
-subset_df = subset_df.sort_values([0], ascending=[True])
+# cleanup chromap barcodes
+chromap_df.replace(np.nan, 0, inplace=True)
+chromap_df = chromap_df.sort_values([0], ascending=[True])
 
-# merge them
-df_bed.index = subset_df.index
-cistopic_obj = pd.read_csv("./Statistics/cistopic_cell_data.csv")
-cistopic_obj.index = cistopic_obj["barcode"]
-singlecell_df = pd.concat([subset_df[1], df_bed[1]], axis=1).dropna()
-singlecell_df.index = subset_df[0]
+# Check if chromap has barcodes that fastq didn't find, add to fastq_df
+missed_barcodes = list(set(chromap_df[0].tolist()) - set(fastq_df[0].tolist()))
+fastq_df = fastq_df.append(missed_barcodes, ignore_index=True)
+
+# cleanup fastq barcodes
+fastq_df.replace(np.nan, 0, inplace=True)
+fastq_df = fastq_df.sort_values([0], ascending=[True])
+
+# Concat fastq (total), chromap (passed filters) barcodes, clean, save
+chromap_df.index = fastq_df.index
+singlecell_df = pd.concat([fastq_df[1], chromap_df[1]], axis=1).dropna()
+singlecell_df.index = fastq_df[0]
 singlecell_df.columns = ["total", "passed_filters"]
 singlecell_df.index = singlecell_df.index + "-1"
-
-singlecell_df = singlecell_df[
-    singlecell_df.index.isin(cistopic_obj.index)
-].reindex(cistopic_obj.index)
-
-singlecell_df = pd.concat([singlecell_df, cistopic_obj], axis=1)
-singlecell_df = singlecell_df.drop(["barcode", "Unnamed: 0"], axis=1)
-
-sum_row = singlecell_df.sum().to_frame().T
-sum_row.index = ["NO_BARCODE"]
-singlecell_df = pd.concat([sum_row, singlecell_df])
-singlecell_df.reset_index(drop=False, inplace=True)
-singlecell_df.rename(columns={"index": "barcode"}, inplace=True)
-singlecell_df["sample_id"][0] = singlecell_df["sample_id"][1]
-singlecell_df.columns = singlecell_df.columns.str.replace("cisTopic_", "")
-singlecell_df.iloc[0, 3:] = "-"
 singlecell_df.to_csv(
     "/root/Statistics/singlecell.csv", header=True, index=False
 )
 print("Output written to singlecell.csv")
 
+# Create summary.csv, add metadata
 summary_df = pd.DataFrame(columns=["Sample ID"])
 summary_df.at[0, "Sample ID"] = run_id
 summary_df.at[0, "Genome"] = genome
 summary_df.at[0, "Pipeline version"] = f"AtlasXomics-{version}"
+
+# Extract summary stats from chromap log file
 summary_df.at[0, "Fraction uniq-aligned reads"] = (
     chromap_log_stats(logfile, "Number of uni-mappings") /
     chromap_log_stats(logfile, "Number of mappings")
 )
-summary_df.at[0, "Chromap input read pairs"] = singlecell_df["total"][0]
+summary_df.at[0, "Chromap input read pairs"] = singlecell_df["total"].sum()
 summary_df.at[0, "Fraction unaligned reads"] = 1 - (
     chromap_log_stats(logfile, "Number of mapped reads") /
     chromap_log_stats(logfile, "Number of reads")
@@ -200,12 +193,15 @@ summary_df.at[0, "Fraction reads with valid barcode"] = 1 - (
     chromap_log_stats(logfile, "Number of corrected barcodes") /
     chromap_log_stats(logfile, "Number of barcodes in whitelist")
 )
+
+# Extract number for peaks from .bed file
 peak_file = pd.read_csv(
-    f"./Statistics/{run_id}_peaks.bed",
-    sep="\t",
-    header=None
+    f"./Statistics/{run_id}_peaks.bed", sep="\t", header=None
 )
 summary_df.at[0, "Number of peaks"] = len(peak_file.index)
+
+# Open cistopic results csv; calculate TSS, FRIP, pct_duplicates
+cistopic_obj = pd.read_csv("./Statistics/cistopic_cell_data.csv")
 summary_df.at[0, "TSS_enrichment"] = max(
     [
         cistopic_obj["TSS_enrichment"].mean(),
