@@ -16,7 +16,8 @@ def get_axis_avgs(
     """
 
     sc = pd.read_csv(singlecell_path)
-    sc = sc[sc["barcode"] != "NO_BARCODE"]
+    if sc.iloc[0, 0] == "NO_BARCODE":
+        sc = sc.drop(0, axis=0)
     sc["barcode"] = sc["barcode"].apply(lambda x: x.strip("-1"))
 
     positions = pd.read_csv(positions_path, header=None)

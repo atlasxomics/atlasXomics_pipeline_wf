@@ -52,7 +52,7 @@ command3 = ["cut", "-c", "61-68"]
 command4 = ["cut", "-c", "23-30"]
 
 # Parse the barcodes from read2 into new files (bc1.txt, bc2.txt)
-with open(str(bc1), "w") as a, open(str(bc2), "w") as b:
+with open(bc1, "w") as a, open(bc2, "w") as b:
 
     process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
     process2 = subprocess.Popen(
@@ -168,6 +168,8 @@ singlecell_df = pd.concat([fastq_df[1], chromap_df[1]], axis=1).dropna()
 singlecell_df.index = fastq_df[0]
 singlecell_df.columns = ["total", "passed_filters"]
 singlecell_df.index = singlecell_df.index + "-1"
+singlecell_df.reset_index(drop=False, inplace=True)
+singlecell_df.rename(columns={0: "barcode"}, inplace=True)
 singlecell_df.to_csv(
     "/root/Statistics/singlecell.csv", header=True, index=False
 )
