@@ -127,7 +127,7 @@ COPY bc_process_newbulk.py /root/bc_process_newbulk.py
 # The following lines are needed to ensure your build environement works
 # correctly with latch.
 RUN pip install marshmallow-enum
-RUN python3 -m pip install --upgrade latch
+RUN python3 -m pip install latch==2.45.0
 COPY wf /root/wf
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag

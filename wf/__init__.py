@@ -274,7 +274,7 @@ def alignment(
         subprocess.run(["sed", "s/ /\t/g", str(temp_file)], stdout=fw)
 
     subprocess.run(
-        ["echo", str("use tabix bgzip to convert bed file into gz file")]
+        ["echo", "use tabix bgzip to convert bed file into gz file"]
     )
 
     with open(str(output_file), "w") as fw:
@@ -305,7 +305,20 @@ def alignment(
     )
 
 
-@custom_task(cpu=30, memory=340, storage_gib=500)
+def allocate_mem(
+    r2: LatchFile,
+    frag: LatchFile,
+    bed: LatchFile,
+    logfile: LatchFile,
+    species: LatchDir,
+    run_id: str,
+    barcode_file: BarcodeFile
+) -> int:
+    bigs = ["bcFG210v4.txt", "bc220-20-MAY.txt"]
+    return 490 if barcode_file.value in bigs else 192
+
+
+@custom_task(cpu=30, memory=allocate_mem, storage_gib=500)
 def statistics(
     r2: LatchFile,
     frag: LatchFile,
