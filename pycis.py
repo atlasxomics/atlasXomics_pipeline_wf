@@ -202,7 +202,6 @@ path_to_regions = {
    run_id: f"{work_dir}/scATAC/consensus_peak_calling/consensus_regions.bed"
 }
 
-sys.stderr = open(os.devnull, "w")  # silence stderr
 metadata_bc, profile_data_dict = compute_qc_stats(
     fragments_dict=fragments_dict,
     tss_annotation=annot,
@@ -227,8 +226,6 @@ metadata_bc, profile_data_dict = compute_qc_stats(
     _temp_dir=os.path.join(tmp_dir + 'ray_spill'),
     use_polars=False  # True gives TypeError: __init__() got an unexpected
 )                     # keyword argument 'encoding'.
-
-sys.stderr = sys.__stderr__  # unsilence stderr
 
 if not os.path.exists(f"{work_dir}/scATAC/quality_control"):
     os.makedirs(f"{work_dir}/scATAC/quality_control")

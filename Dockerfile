@@ -110,6 +110,7 @@ COPY bc50_old.txt /root/bc50_old.txt
 COPY bc96.txt /root/bc96.txt
 COPY bc96_fg.txt /root/bc96_fg.txt
 COPY bcFG210v4.txt /root/bcFG210v4.txt
+COPY bc220-20-MAY.txt /root/bc220-20-MAY.txt
 
 COPY blacklist /root/blacklist
 COPY hg38_chrom_sizes.txt /root/hg38_chrom_sizes.txt
@@ -126,7 +127,7 @@ COPY bc_process_newbulk.py /root/bc_process_newbulk.py
 # The following lines are needed to ensure your build environement works
 # correctly with latch.
 RUN pip install marshmallow-enum
-RUN python3 -m pip install --upgrade latch
+RUN python3 -m pip install latch==2.45.0
 COPY wf /root/wf
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag

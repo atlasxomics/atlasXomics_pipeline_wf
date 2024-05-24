@@ -35,6 +35,7 @@ class BarcodeFile(Enum):
     x96 = "bc96.txt"
     x96_fg = "bc96_fg.txt"
     x210 = "bcFG210v4.txt"
+    x220 = "bc220-20-MAY.txt"
 
 
 @large_task(retries=0)
@@ -273,7 +274,7 @@ def alignment(
         subprocess.run(["sed", "s/ /\t/g", str(temp_file)], stdout=fw)
 
     subprocess.run(
-        ["echo", str("use tabix bgzip to convert bed file into gz file")]
+        ["echo", "use tabix bgzip to convert bed file into gz file"]
     )
 
     with open(str(output_file), "w") as fw:
@@ -304,7 +305,20 @@ def alignment(
     )
 
 
-@custom_task(cpu=30, memory=340, storage_gib=500)
+def allocate_mem(
+    r2: LatchFile,
+    frag: LatchFile,
+    bed: LatchFile,
+    logfile: LatchFile,
+    species: LatchDir,
+    run_id: str,
+    barcode_file: BarcodeFile
+) -> int:
+    bigs = ["bcFG210v4.txt", "bc220-20-MAY.txt"]
+    return 490 if barcode_file.value in bigs else 192
+
+
+@custom_task(cpu=30, memory=allocate_mem, storage_gib=500)
 def statistics(
     r2: LatchFile,
     frag: LatchFile,
@@ -332,7 +346,8 @@ def statistics(
         "x50_old": "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
         "x96": "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv",
         "x96_fg": "s3://latch-public/test-data/13502/xfg96_11DEC_all_tissue_positions_list.csv",
-        "x210": "s3://latch-public/test-data/13502/xFG210v4_all_tissue_positions_list.csv"
+        "x210": "s3://latch-public/test-data/13502/xFG210v4_all_tissue_positions_list.csv",
+        "x220": "s3://latch-public/test-data/13502/xbc220-20-MAY_alltissue_positions_list.csv"
     }
     positions_path = LatchFile(positions_paths[barcode_file.name])
     positions_file = Path(positions_path.local_path).resolve()
