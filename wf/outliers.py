@@ -16,11 +16,12 @@ def get_axis_avgs(
     """
 
     sc = pd.read_csv(singlecell_path)
-    sc = sc[sc["barcode"] != "NO_BARCODE"]
-    sc["barcode"] = sc["barcode"].apply(lambda x: x.strip("-1"))
+    if sc.iloc[0, 0] == "NO_BARCODE":
+        sc = sc.drop(0, axis=0)
+    sc["barcodes"] = sc["barcodes"].apply(lambda x: x.strip("-1"))
 
     positions = pd.read_csv(positions_path, header=None)
-    positions.columns = ["barcode", "on_tissue", "row", "column"]
+    positions.columns = ["barcodes", "on_tissue", "row", "column"]
 
     merged = pd.merge(sc, positions)
 
