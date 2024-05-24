@@ -42,7 +42,7 @@ ap.add_argument(
 ap.add_argument(
     "-bcf",
     required=False,
-    default="/root/bc50.txt.gz",
+    default="/root/barcodes/bc50.txt.gz",
     help="Optional flag to specify barcode list"
 )
 ap.add_argument(

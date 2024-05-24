@@ -104,24 +104,13 @@ COPY renv/activate.R /root/renv/activate.R
 COPY renv/settings.json /root/renv/settings.json
 RUN R -e "renv::restore()"
 
-# Copy files to root dir
-COPY bc50.txt /root/bc50.txt
-COPY bc50_old.txt /root/bc50_old.txt
-COPY bc96.txt /root/bc96.txt
-COPY bc96_fg.txt /root/bc96_fg.txt
-COPY bcFG210v4.txt /root/bcFG210v4.txt
-COPY bc220-20-MAY.txt /root/bc220-20-MAY.txt
-
+# Copy support dirs 
+COPY barcodes /root/barcodes
 COPY blacklist /root/blacklist
-COPY hg38_chrom_sizes.txt /root/hg38_chrom_sizes.txt
-COPY mm10_chrom_sizes.txt /root/mm10_chrom_sizes.txt
+COPY chrom_sizes /root/chrom_sizes
+COPY scripts /root/scripts
 
-COPY rn6_chrom_sizes.txt /root/rn6_chrom_sizes.txt
-COPY singlecellsummary.py /root/singlecellsummary.py
-COPY pycis.py /root/pycis.py
-COPY peak_files.R /root/peak_files.R
 COPY version /root/version
-COPY bc_process_newbulk.py /root/bc_process_newbulk.py
 
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
