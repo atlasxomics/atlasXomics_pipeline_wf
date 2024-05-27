@@ -63,7 +63,9 @@ fragments_dict = {run_id: fragment_edited}
 
 cell_data = pd.read_table(whitelist, header=None, index_col=None)
 cell_data.rename(columns={0: "barcode"}, inplace=True)
-cell_data.index = cell_data["barcode"].astype(str) + "-1" + "___" + list(fragments_dict)[0]
+cell_data.index = (
+    cell_data["barcode"].astype(str) + "-1" + "___" + list(fragments_dict)[0]
+)
 cell_data["Sample"] = list(fragments_dict)[0]
 cell_data["barcode"] = cell_data["barcode"] + "-1"
 cell_data.index.name = None

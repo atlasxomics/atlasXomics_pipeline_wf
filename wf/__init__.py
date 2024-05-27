@@ -139,19 +139,17 @@ def process_bc_task(
     barcode seqs and save as read3
     """
     if (not (bulk or noLigation_bulk)):
-        return LatchFile(
-            r2.local_path,
-            r2.remote_path
-            )
+        return LatchFile(r2.local_path, r2.remote_path)
 
     outdir = Path("chromap_inputs/").resolve()
     os.mkdir(outdir)
+
     new_r2 = Path(f"{outdir}/{run_id}_S1_L001_R2_001.fastq").resolve()
     r3 = Path(f"{outdir}/{run_id}_S1_L001_R3_001.fastq").resolve()
 
     _bc_cmd = [
         "python",
-        "bc_process_newbulk.py",
+        "scripts/bc_process_newbulk.py",
         "-i",
         r2.local_path,
         "-o2",
@@ -159,7 +157,7 @@ def process_bc_task(
         "-o3",
         f"{str(r3)}",
         "-bcf",
-        f"{barcode_file.value}"
+        f"barcodes/{barcode_file.value}"
     ]
 
     if bulk:
@@ -218,7 +216,7 @@ def alignment(
         "-b",
         r2.local_path,
         "--barcode-whitelist",
-        f"{barcode_file.value}",
+        f"barcodes/{barcode_file.value}",
         "--read-format",
         "bc:22:29,bc:60:67,r1:0:-1,r2:117:-1"
     ]
@@ -335,7 +333,7 @@ def statistics(
     tmp_dir = Path("tmp_dir/").resolve()
     os.mkdir(tmp_dir)
 
-    whitelist = Path(f"{barcode_file.value}").resolve()
+    whitelist = Path(f"barcodes/{barcode_file.value}").resolve()
     peak_file = Path(
         f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak"
     ).resolve()
@@ -359,14 +357,26 @@ def statistics(
 
     # Assign genome metadata
     genome_dict = {
-        "GRCh38": ["hs", "hg38_chrom_sizes.txt", "blacklist/hg38-blacklist.v2.bed"],
-        "GRCm38": ["mm", "mm10_chrom_sizes.txt", "blacklist/mm10-blacklist.v2.bed"],
-        "Rnor6": ["rnor6", "rn6_chrom_sizes.txt", "na"]
+        "GRCh38": [
+            "hs",
+            "chrom_sizes/hg38_chrom_sizes.txt",
+            "blacklist/hg38-blacklist.v2.bed"
+        ],
+        "GRCm38": [
+            "mm",
+            "chrom_sizes/mm10_chrom_sizes.txt",
+            "blacklist/mm10-blacklist.v2.bed"
+        ],
+        "Rnor6": [
+            "rnor6",
+            "chrom_sizes/rn6_chrom_sizes.txt",
+            "na"
+        ]
     }
 
     _pyct_cmd = [
         "python",
-        "pycis.py",
+        "scripts/pycis.py",
         "-f",
         frag.local_path,
         "-i",
@@ -391,7 +401,7 @@ def statistics(
 
     _sc_cmd = [
         "python",
-        "singlecellsummary.py",
+        "scripts/singlecellsummary.py",
         "-r2",
         r2.local_path,
         "-bed",
@@ -416,7 +426,7 @@ def statistics(
     print("Creating peak files!")
     _report_cmd = [
         "Rscript",
-        "/root/peak_files.R",
+        "/root/scripts/peak_files.R",
         frag.local_path,
         peak_file,
         genome_dict[genome_id][0],
