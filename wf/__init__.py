@@ -313,7 +313,7 @@ def allocate_mem(
     barcode_file: BarcodeFile
 ) -> int:
     bigs = ["bcFG210v4.txt", "bc220-20-MAY.txt"]
-    return 490 if barcode_file.value in bigs else 192
+    return 750 if barcode_file.value in bigs else 192
 
 
 @custom_task(cpu=30, memory=allocate_mem, storage_gib=500)
