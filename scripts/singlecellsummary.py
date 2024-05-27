@@ -85,6 +85,7 @@ missed_barcodes = pd.Series(
         set(chromap_df["barcodes"].tolist())
     )
 )
+missed_barcodes = pd.DataFrame({"barcodes": missed_barcodes})
 chromap_df = pd.concat([chromap_df, missed_barcodes], ignore_index=True)
 
 # cleanup chromap barcodes
@@ -99,11 +100,13 @@ missed_barcodes = pd.Series(
         set(fastq_df["barcodes"].tolist())
     )
 )
+missed_barcodes = pd.DataFrame({"barcodes": missed_barcodes})
 fastq_df = pd.concat([fastq_df, missed_barcodes], ignore_index=True)
 
 # cleanup fastq barcodes
 fastq_df.replace(np.nan, 0, inplace=True)
 fastq_df = fastq_df.sort_values(["barcodes"], ascending=[True])
+fastq_df.columns = ["barcodes", "count"]
 
 # Concat fastq (total), chromap (passed filters) barcodes, clean, save
 chromap_df.index = fastq_df.index
