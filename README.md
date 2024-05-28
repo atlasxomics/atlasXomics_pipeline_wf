@@ -8,4 +8,4 @@ In this step we use [bbmap](https://github.com/BioInfoTools/BBMap/blob/master/sh
 The most recent and fastest alignment tools for epigenomics data [chromap](https://github.com/haowenz/chromap) is applied in this step. Chromap will process barcodes from fastq_R2.gz and  align reads of both fastq_R1.gz and fastq_R2.gz files. The result would be a fragment file which can be used for downstream analysis by [ArchR](https://www.archrproject.com/) or [Signac](https://stuartlab.org/signac/).
 
 #### Statistics 
-The quality control indices like FRIP, TSS score and peak .bed/.h5 files prepared in this step using [pycisTopic](https://github.com/aertslab/pycisTopic) package.
+The quality control indices like FRIP, TSS score and peak .bed files prepared in this step using [pycisTopic](https://github.com/aertslab/pycisTopic) package.
