@@ -40,78 +40,11 @@ RUN git clone https://github.com/aertslab/pycisTopic.git && \
     pip install . && \
     cd /root
 
-# Install R
-RUN apt-get update -y && \
-    apt-get install -y \
-        r-base \
-        r-base-dev \
-        apt-transport-https \
-        build-essential \
-        gfortran \
-        libhdf5-dev \
-        libatlas-base-dev \
-        libbz2-dev \
-        libcurl4-openssl-dev \
-        libfontconfig1-dev \
-        libfreetype6-dev \
-        libgit2-dev \
-        libglpk-dev \
-        libgsl-dev \
-        libicu-dev \
-        liblzma-dev \
-        libpango-1.0-0 \
-        libpangocairo-1.0-0 \
-        libpcre3-dev \
-        libssl-dev \
-        libtcl8.6 \
-        libtiff5 \
-        libtk8.6 \
-        libxml2-dev \
-        libxt-dev \
-        libx11-dev \
-        libtiff-dev \
-        libharfbuzz-dev \
-        libfribidi-dev \
-        locales \
-        make \
-        pandoc \
-        tzdata \
-        vim \
-        wget \
-        zlib1g-dev \
-        r-cran-rjava \
-        libmagick++-dev
-
-# Fix systemd conflict with timedatectl
-RUN echo "TZ=$( cat /etc/timezone )" >> /etc/R/Renviron.site
-
-# Install devtools (https://stackoverflow.com/questions/20923209), also cairo
-RUN apt-get install -y r-cran-devtools libcairo2-dev
-
-# Upgrade R to version 4.3.0
-RUN wget https://cran.r-project.org/src/base/R-4/R-4.3.0.tar.gz
-RUN tar zxvf R-4.3.0.tar.gz
-RUN cd R-4.3.0 && ./configure --enable-R-shlib
-RUN cd R-4.3.0 && make && make install
-RUN R CMD javareconf
-
-# Installation of R packages with renv
-RUN R -e "install.packages('https://cran.r-project.org/src/contrib/renv_1.0.5.tar.gz', repos = NULL, type = 'source')"
-COPY renv.lock /root/renv.lock
-COPY .Rprofile /root/.Rprofile
-RUN mkdir /root/renv
-COPY renv/activate.R /root/renv/activate.R
-COPY renv/settings.json /root/renv/settings.json
-RUN R -e "renv::restore()"
-
 # Copy support dirs 
 COPY barcodes /root/barcodes
 COPY blacklist /root/blacklist
 COPY chrom_sizes /root/chrom_sizes
 COPY scripts /root/scripts
-
-COPY atlasXomics_pipeline_wf.Rproj /root/atlasXomics_pipeline_wf.Rproj
-COPY .renvignore /root/.renvignore
 
 COPY version /root/version
 

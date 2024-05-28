@@ -29,6 +29,11 @@ import wf.lims as lims
 from wf.outliers import plotting_task
 
 
+logging.basicConfig(
+    format="%(levelname)s - %(asctime)s - %(message)s", level=logging.INFO
+)
+
+
 class BarcodeFile(Enum):
     x50 = "bc50.txt"
     x50_old = "bc50_old.txt"
@@ -334,9 +339,6 @@ def statistics(
     os.mkdir(tmp_dir)
 
     whitelist = Path(f"barcodes/{barcode_file.value}").resolve()
-    peak_file = Path(
-        f"{work_dir}/scATAC/consensus_peak_calling/MACS/{run_id}_peaks.narrowPeak"
-    ).resolve()
     singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
 
     positions_paths = {
@@ -420,20 +422,22 @@ def statistics(
 
     subprocess.run(_sc_cmd)
 
-    print("Creating lane qc plot!")
+    logging.info("Creating lane qc plot.")
     plotting_task(singlecell, positions_file)
 
-    print("Creating peak files!")
-    _report_cmd = [
-        "Rscript",
-        "/root/scripts/peak_files.R",
-        frag.local_path,
-        peak_file,
-        genome_dict[genome_id][0],
-        run_id,
+    logging.info("Cleaning up /Statistics/.")
+    _cp_cmd = [
+        "cp",
+        "/root/Statistics/scATAC/quality_control/sample_metrics.pdf",
+        "/root/Statistics/qc_plot.pdf"
     ]
+    subprocess.run(_cp_cmd)
 
-    subprocess.run(_report_cmd)
+    try:  # Put in try/except so not to break if missing
+        os.remove("/root/Statistics/fragments_edited.tsv.gz")
+        os.remove("/root/Statistics/tmp1.txt")
+    except FileNotFoundError:
+        pass
 
     return LatchDir(
         str(work_dir),
@@ -522,7 +526,7 @@ def upload_latch_registry(
                     single_cell_file=LatchFile(single_cell_file)
                 )
                 return
-            except:
+            except TypeError:
                 logging.warning(f"No table with id {table_id} found.")
                 return
             finally:

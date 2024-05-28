@@ -6,7 +6,6 @@ import pathlib
 import pickle
 import pyranges as pr
 import pybiomart as pbm
-import sys
 
 from pycisTopic.qc import *
 from pycisTopic.cistopic_class import *
@@ -145,7 +144,7 @@ narrow_peaks_dict = peak_calling(
 )
 
 peak_half_width = 250
-consensus_peaks = get_consensus_peaks( # iterative_peak_calling
+consensus_peaks = get_consensus_peaks(  # iterative_peak_calling
    narrow_peaks_dict,
    peak_half_width,
    chromsizes=chromsizes,
@@ -370,7 +369,7 @@ bc_passing_filters = pickle.load(
     )
 )
 cistopic_obj_list = [
-    create_cistopic_object_from_fragments( # cistopic_class
+    create_cistopic_object_from_fragments(  # cistopic_class
         path_to_fragments=fragments_dict[key],
         path_to_regions=path_to_regions[key],
         path_to_blacklist=black_lst,
