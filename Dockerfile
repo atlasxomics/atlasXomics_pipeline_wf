@@ -110,6 +110,9 @@ COPY blacklist /root/blacklist
 COPY chrom_sizes /root/chrom_sizes
 COPY scripts /root/scripts
 
+COPY atlasXomics_pipeline_wf.Rproj /root/atlasXomics_pipeline_wf.Rproj
+COPY .renvignore /root/.renvignore
+
 COPY version /root/version
 
 # STOP HERE:
