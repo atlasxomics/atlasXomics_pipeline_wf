@@ -110,13 +110,16 @@ COPY blacklist /root/blacklist
 COPY chrom_sizes /root/chrom_sizes
 COPY scripts /root/scripts
 
+COPY atlasXomics_pipeline_wf.Rproj /root/atlasXomics_pipeline_wf.Rproj
+COPY .renvignore /root/.renvignore
+
 COPY version /root/version
 
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
 # correctly with latch.
 RUN pip install marshmallow-enum
-RUN python3 -m pip install latch==2.45.0
+RUN python3 -m pip install --upgrade latch
 COPY wf /root/wf
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag

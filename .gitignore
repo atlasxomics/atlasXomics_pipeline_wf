@@ -4,4 +4,4 @@ wf/creds.py
 **/*.ipynb*
 .latch_report.tar.gz
 .latch/
-.Rproj.user
+.Rproj.user/
