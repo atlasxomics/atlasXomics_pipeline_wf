@@ -6,3 +6,4 @@ blacklist
 chrom_sizes
 chromap
 pycisTopic
+tmp_dirray_spill
