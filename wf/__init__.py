@@ -522,7 +522,7 @@ def upload_latch_registry(
                     single_cell_file=LatchFile(single_cell_file)
                 )
                 return
-            except:
+            except TypeError:
                 logging.warning(f"No table with id {table_id} found.")
                 return
             finally:
