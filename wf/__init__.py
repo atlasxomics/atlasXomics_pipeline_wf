@@ -508,7 +508,6 @@ def upload_latch_registry(
         prefix = f"{results_dir.remote_path}/"
 
         peaks_bed = f"{prefix}{run_id}_peaks.bed"
-        raw_peaks_bc_matrix_h5 = f"{prefix}{run_id}_raw_peak_bc_matrix.h5"
         single_cell_file = f"{prefix}/singlecell.csv"
 
         fragments_file_tbi = f"{chromap_frag.remote_path}.tbi"
@@ -522,7 +521,6 @@ def upload_latch_registry(
                     fragments_file=chromap_frag,
                     peaks_bed=LatchFile(peaks_bed),
                     fragment_file_tbi=LatchFile(fragments_file_tbi),
-                    raw_peaks_bc_matrix_h5=LatchFile(raw_peaks_bc_matrix_h5),
                     single_cell_file=LatchFile(single_cell_file)
                 )
                 return
@@ -578,17 +576,17 @@ metadata = LatchMetadata(
                         Dxxxxx_NGxxxxx format.",
             batch_table_column=True,
             placeholder="Dxxxxx_NGxxxxx",
-            rules=[
-                LatchRule(
-                    regex="^[^/].*",
-                    message="run id cannot start with a '/'"
-                ),
-                LatchRule(
-                    regex="_NG[0-9]{5}$",
-                    message="Provide ng_id in ng_id field if upload to \
-                    SLIMS desired."
-                )
-            ]
+            # rules=[
+            #     LatchRule(
+            #         regex="^[^/].*",
+            #         message="run id cannot start with a '/'"
+            #     ),
+            #     LatchRule(
+            #         regex="_NG[0-9]{5}$",
+            #         message="Provide ng_id in ng_id field if upload to \
+            #         SLIMS desired."
+            #     )
+            # ]
         ),
         "barcode_file": LatchParameter(
             display_name="barcode file",
@@ -622,16 +620,16 @@ metadata = LatchMetadata(
                         SLIMS and run_id does not end in '_NG00001'.",
             placeholder="NGxxxxx",
             batch_table_column=True,
-            rules=[
-                LatchRule(
-                    regex="^NG[0-9]{5}$",
-                    message="ng_id must match NGxxxxx format."
-                ),
-                LatchRule(
-                    regex="^\S+$",
-                    message="run id cannot contain whitespace"
-                )
-            ]
+            # rules=[
+            #     LatchRule(
+            #         regex="^NG[0-9]{5}$",
+            #         message="ng_id must match NGxxxxx format."
+            #     ),
+            #     LatchRule(
+            #         regex="^\S+$",
+            #         message="run id cannot contain whitespace"
+            #     )
+            # ]
         ),
         "table_id": LatchParameter(
             display_name="Registry Table ID",
