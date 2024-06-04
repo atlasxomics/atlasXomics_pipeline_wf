@@ -576,17 +576,17 @@ metadata = LatchMetadata(
                         Dxxxxx_NGxxxxx format.",
             batch_table_column=True,
             placeholder="Dxxxxx_NGxxxxx",
-            # rules=[
-            #     LatchRule(
-            #         regex="^[^/].*",
-            #         message="run id cannot start with a '/'"
-            #     ),
-            #     LatchRule(
-            #         regex="_NG[0-9]{5}$",
-            #         message="Provide ng_id in ng_id field if upload to \
-            #         SLIMS desired."
-            #     )
-            # ]
+            rules=[
+                LatchRule(
+                    regex="^[^/].*",
+                    message="run id cannot start with a '/'"
+                ),
+                LatchRule(
+                    regex="_NG[0-9]{5}$",
+                    message="Provide ng_id in ng_id field if upload to \
+                    SLIMS desired."
+                )
+            ]
         ),
         "barcode_file": LatchParameter(
             display_name="barcode file",
@@ -620,16 +620,16 @@ metadata = LatchMetadata(
                         SLIMS and run_id does not end in '_NG00001'.",
             placeholder="NGxxxxx",
             batch_table_column=True,
-            # rules=[
-            #     LatchRule(
-            #         regex="^NG[0-9]{5}$",
-            #         message="ng_id must match NGxxxxx format."
-            #     ),
-            #     LatchRule(
-            #         regex="^\S+$",
-            #         message="run id cannot contain whitespace"
-            #     )
-            # ]
+            rules=[
+                LatchRule(
+                    regex="^NG[0-9]{5}$",
+                    message="ng_id must match NGxxxxx format."
+                ),
+                LatchRule(
+                    regex="^\S+$",
+                    message="run id cannot contain whitespace"
+                )
+            ]
         ),
         "table_id": LatchParameter(
             display_name="Registry Table ID",
