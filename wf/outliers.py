@@ -23,7 +23,7 @@ def get_axis_avgs(
     positions = pd.read_csv(positions_path, header=None)
     positions.columns = ["barcodes", "on_tissue", "row", "column"]
 
-    merged = pd.merge(sc, positions)
+    merged = pd.merge(sc, positions, how='outer')
 
     avgs = [merged.groupby([axis]).median(numeric_only=True)["passed_filters"]
             for axis in ["row", "column"]]
@@ -33,6 +33,13 @@ def get_axis_avgs(
     )
     df.columns = ["row_avg", "col_avg"]
     df.index.name = None
+
+    # If there are less than min4Median data points, change value to NA
+    min4Median = 3
+    df.loc[merged.groupby(['row']).count()['passed_filters'] < min4Median,
+           'row_avg'] = pd.NA
+    df.loc[merged.groupby(['column']).count()['passed_filters'] < min4Median,
+           'col_avg'] = pd.NA
 
     return df
 
