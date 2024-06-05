@@ -343,7 +343,7 @@ def statistics(
         Path(genome_dict[genome_id][2]).resolve(),
         "-w",
         whitelist,
-        "-p",
+        "-d",
         positions_file
     ]
 
@@ -374,13 +374,6 @@ def statistics(
     plotting_task(singlecell, positions_file)
 
     logging.info("Cleaning up /Statistics/.")
-    _cp_cmd = [
-        "cp",
-        "/root/Statistics/scATAC/quality_control/sample_metrics.pdf",
-        "/root/Statistics/qc_plot.pdf"
-    ]
-    subprocess.run(_cp_cmd)
-
     try:  # Put in try/except so not to break if missing
         os.remove("/root/Statistics/fragments_edited.tsv.gz")
         os.remove("/root/Statistics/tmp1.txt")

@@ -1,9 +1,7 @@
 import argparse
 import glob
 import gzip
-import os
 import pandas as pd
-import pickle
 import pyranges as pr
 import pybiomart as pbm
 
@@ -98,18 +96,6 @@ bw_paths, bed_paths = export_pseudobulk(
     use_polars=False
 )
 
-with open(
-   f"{work_dir}/scATAC/consensus_peak_calling/pseudobulk_bed_files/bed_paths.pkl",
-   "wb"
-) as f:
-    pickle.dump(bed_paths, f)
-
-with open(
-   f"{work_dir}/scATAC/consensus_peak_calling/pseudobulk_bed_files/bw_paths.pkl",
-   "wb"
-) as f:
-    pickle.dump(bw_paths, f)
-
 # Run peak calling, derive consensus peaks, write to .bed
 narrow_peaks_dict = peak_calling(
     "/usr/local/bin/macs2",
@@ -203,16 +189,8 @@ metadata_bc, profile_data_dict = compute_qc_stats(
     tss_rolling_window=10,
     remove_duplicates=True,
     _temp_dir=f"{tmp_dir}/ray_spill",
-    use_polars=False  # True gives TypeError: __init__() got an unexpected
-)                     # keyword argument 'encoding'.
-
-os.makedirs(f"{work_dir}/scATAC/quality_control", exist_ok=True)
-
-with open(f"{work_dir}/scATAC/quality_control/metadata_bc.pkl", "wb") as f:
-    pickle.dump(metadata_bc, f)
-
-with open(f"{work_dir}/scATAC/quality_control/profile_data_dict.pkl", "wb") as f:
-    pickle.dump(profile_data_dict, f)
+    use_polars=False  # True gives TypeError
+)
 
 # Create standard QC plot
 plot_sample_metrics(
@@ -220,61 +198,35 @@ plot_sample_metrics(
     insert_size_distribution_xlim=[0, 600],
     ncol=5,
     plot=True,
-    save=f"{work_dir}/scATAC/quality_control/sample_metrics.pdf"
+    save=f"{work_dir}/qc_plot.pdf"
 )
 
 # Calculate number of barcodes passing filter and save as .pkl
-qc_filters = {
-    run_id: {
-        "Log_unique_nr_frag": [0, None],
-        "FRIP": [0.0, None],
-        "TSS_enrichment": [0, None],
-        "Dupl_rate": [None, None]
-    }
-}
-
-FRIP_filterDict = {}
-TSS_filterDict = {}
-
-_, FRIP_filter = plot_barcode_metrics(
+frip_filtered = plot_barcode_metrics(
     metadata_bc[run_id],
     var_x="Log_unique_nr_frag",
     var_y="FRIP",
-    min_x=qc_filters[run_id]["Log_unique_nr_frag"][0],
-    max_x=qc_filters[run_id]["Log_unique_nr_frag"][1],
-    min_y=qc_filters[run_id]["FRIP"][0],
-    max_y=qc_filters[run_id]["FRIP"][1],
-    return_cells=True,
-    return_fig=True,
+    min_x=0,
+    max_x=None,
+    min_y=0.0,
+    max_y=None,
     plot=False
 )
 
-_, TSS_filter = plot_barcode_metrics(
+tss_filtered = plot_barcode_metrics(
     metadata_bc[run_id],
     var_x='Log_unique_nr_frag',
     var_y='TSS_enrichment',
-    min_x=qc_filters[run_id]['Log_unique_nr_frag'][0],
-    max_x=qc_filters[run_id]['Log_unique_nr_frag'][1],
-    min_y=qc_filters[run_id]['TSS_enrichment'][0],
-    max_y=qc_filters[run_id]['TSS_enrichment'][1],
-    return_cells=True,
-    return_fig=True,
+    min_x=0,
+    max_x=None,
+    min_y=0,
+    max_y=None,
     plot=False
 )
 
-FRIP_filterDict[run_id] = FRIP_filter
-TSS_filterDict[run_id] = TSS_filter
-
-bc_passing_filters = {
-    run_id: list(set(FRIP_filterDict[run_id]) & set(TSS_filterDict[run_id]))
-}
+bc_passing_filters = {run_id: list(set(frip_filtered) & set(tss_filtered))}
 bc_len = len(bc_passing_filters[run_id])
 print(f"{bc_len} barcodes passed filters for sample {run_id}")
-
-with open(
-    f"{work_dir}/scATAC/quality_control/bc_passing_filters.pkl", "wb"
-) as f:
-    pickle.dump(bc_passing_filters, f)
 
 # Create cistopic object, save metrics to cistopic_cell_data.csv
 cistopic_obj = create_cistopic_object_from_fragments(
