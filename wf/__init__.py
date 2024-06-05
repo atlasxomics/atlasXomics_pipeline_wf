@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
 
-from latch import custom_task, large_task, medium_task, small_task, workflow
+from latch import custom_task, large_task, small_task, workflow
 from latch.account import Account
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
@@ -130,54 +130,6 @@ def filtering(
             f"latch:///chromap_outputs/{run_id}/preprocessing/{l2_stats.name}"
         )
     )
-
-
-@medium_task(retries=0)
-def process_bc_task(
-    r2: LatchFile,
-    run_id: str,
-    bulk: bool,
-    noLigation_bulk: bool,
-    barcode_file: BarcodeFile
-) -> LatchFile:
-    """ Process read2: save genomic portion as read3, extract 16 bp
-    barcode seqs and save as read3
-    """
-    if (not (bulk or noLigation_bulk)):
-        return LatchFile(r2.local_path, r2.remote_path)
-
-    outdir = Path("chromap_inputs/").resolve()
-    os.mkdir(outdir)
-
-    new_r2 = Path(f"{outdir}/{run_id}_S1_L001_R2_001.fastq").resolve()
-    r3 = Path(f"{outdir}/{run_id}_S1_L001_R3_001.fastq").resolve()
-
-    _bc_cmd = [
-        "python",
-        "scripts/bc_process_newbulk.py",
-        "-i",
-        r2.local_path,
-        "-o2",
-        f"{str(new_r2)}",
-        "-o3",
-        f"{str(r3)}",
-        "-bcf",
-        f"barcodes/{barcode_file.value}"
-    ]
-
-    if bulk:
-        _bc_cmd.append("-b")
-        _bc_cmd.append("-cm")
-    if noLigation_bulk:
-        _bc_cmd.append("-nl")
-        _bc_cmd.append("-cm")
-
-    subprocess.run(_bc_cmd)
-
-    return LatchFile(
-            str(new_r2),
-            f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R2.fastq.gz"
-        )
 
 
 @large_task(retries=0)
@@ -391,10 +343,6 @@ def statistics(
         Path(genome_dict[genome_id][2]).resolve(),
         "-w",
         whitelist,
-        "-d",
-        work_dir,
-        "-t",
-        tmp_dir,
         "-p",
         positions_file
     ]
@@ -455,7 +403,7 @@ def lims_task(
 
     if upload:
 
-        data = Path(results_dir.local_path + '/summary.csv').resolve()
+        data = Path(results_dir.local_path + "/summary.csv").resolve()
 
         slims = lims.slims_init()
         results = lims.csv_to_dict(data)
@@ -595,19 +543,6 @@ metadata = LatchMetadata(
                         bc50_old.txt for previous version of 50x50.",
             batch_table_column=True,
         ),
-        "bulk": LatchParameter(
-            display_name="bulk",
-            description=" If true, barcode sequences in reads will be \
-                        replaced with random barcodes (current: bulk).",
-            batch_table_column=True,
-        ),
-        "noLigation_bulk": LatchParameter(
-            display_name="no-ligation primer bulk",
-            description="If true, reads will have linker sequences added and \
-                        random barcodes assigned (current: no-ligation \
-                        primer bulk).",
-            batch_table_column=True,
-        ),
         "upload_to_slims": LatchParameter(
             display_name="upload to slims",
             description="Select for run metrics to be upload to SLIMS; if \
@@ -651,8 +586,6 @@ def total_wf(
     species: LatchDir,
     ng_id: Optional[str],
     barcode_file: BarcodeFile = BarcodeFile.x50,
-    noLigation_bulk: bool = False,
-    bulk: bool = False,
     upload_to_slims: bool = False,
     table_id: str = "761"
 ) -> List[Union[LatchDir, LatchFile]]:
@@ -675,17 +608,21 @@ def total_wf(
         2. reads with >3 mismatches in the ligation linker2 are removed
         from analysis
 
-    2. Perform sequence alignment with [Chromap](https://github.com/haowenz/chromap).
-        - Chromap will process barcodes from fastq_R2.gz and align reads of both
-        fastq_R1.gz and fastq_R2.gz files. The result is a fragment file which
-        can be used for downstream analysis by [ArchR](https://www.archrproject.com/)
+    2. Perform sequence alignment with
+    [Chromap](https://github.com/haowenz/chromap).
+        - Chromap will process barcodes from fastq_R2.gz and align reads of
+        both fastq_R1.gz and fastq_R2.gz files. The result is a fragment file
+        which can be used for downstream analysis by
+        [ArchR](https://www.archrproject.com/)
         or [Signac](https://stuartlab.org/signac/).
 
     3. Generate quality control metrics (ie. FRIP, TSS score) and peak
-    .bed/.h5 files using the [pycisTopic](https://github.com/aertslab/pycisTopic)package.
+    .bed/.h5 files using the
+    [pycisTopic](https://github.com/aertslab/pycisTopic)package.
 
     Questions? Comments?  Contact support@atlasxomics.com or post in the
-    AtlasXomics [Discord](https://discord.com/channels/1004748539827597413/1005222888384770108).
+    AtlasXomics
+    [Discord](https://discord.com/channels/1004748539827597413/1005222888384770108).
     """
 
     filtered_r1, filtered_r2, _, _ = filtering(
@@ -696,24 +633,16 @@ def total_wf(
         skip2=skip2
     )
 
-    bulkd_r2 = process_bc_task(
-        r2=filtered_r2,
-        run_id=run_id,
-        bulk=bulk,
-        noLigation_bulk=noLigation_bulk,
-        barcode_file=barcode_file
-    )
-
     chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
         r1=filtered_r1,
-        r2=bulkd_r2,
+        r2=filtered_r2,
         run_id=run_id,
         species=species,
         barcode_file=barcode_file
     )
 
     reports = statistics(
-        r2=bulkd_r2,
+        r2=filtered_r2,
         bed=chromap_bed,
         frag=chromap_frag,
         logfile=chromap_log,
