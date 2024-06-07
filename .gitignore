@@ -5,3 +5,4 @@ wf/creds.py
 .latch_report.tar.gz
 .latch/
 MACS/
+**/*.pkl
