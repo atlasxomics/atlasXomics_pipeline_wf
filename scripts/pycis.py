@@ -106,11 +106,6 @@ annot["Chromosome/scaffold name"] = annot[
 annot.columns = ["Chromosome", "Start", "Strand", "Gene", "Transcript_type"]
 annot = annot[annot.Transcript_type == "protein_coding"]
 
-# Compute qc stats, save as .pkl
-path_to_regions = {
-   run_id: f"{work_dir}/scATAC/consensus_peak_calling/consensus_regions.bed"
-}
-
 metadata_bc, profile_data_dict = compute_qc_stats(
     fragments_dict=fragments_dict,
     tss_annotation=annot,
@@ -136,6 +131,12 @@ metadata_bc, profile_data_dict = compute_qc_stats(
 # Create standard QC plot
 plot_sample_metrics(
     profile_data_dict,
+    profile_list=[
+        "barcode_rank_plot",
+        "duplicate_rate",
+        "insert_size_distribution",
+        "profile_tss"
+    ],
     insert_size_distribution_xlim=[0, 600],
     ncol=5,
     plot=True,

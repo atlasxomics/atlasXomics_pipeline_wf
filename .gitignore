@@ -6,3 +6,4 @@ wf/creds.py
 .latch/
 MACS/
 **/*.pkl
+pycisTopic/
