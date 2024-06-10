@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union, Tuple
 
-from latch import custom_task, large_task, medium_task, small_task, workflow
+from latch import custom_task, large_task, small_task, workflow
 from latch.account import Account
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
@@ -49,8 +49,16 @@ def filtering(
     r2: LatchFile,
     run_id: str,
     skip1: bool,
-    skip2: bool
+    skip2: bool,
+    barcode_file: BarcodeFile,
+    bulk: bool,
+    noLigation_bulk: bool
 ) -> Tuple[LatchFile, LatchFile, LatchFile, LatchFile]:
+    """Perform filtering with bbduk based on ligation linker 1 and 2 seqeunces;
+    read pairs with >3 mismatches are removed from processing.  If 'bulk' is or
+    'noLigation_bulk' is selected, barcodes are randomly assigned to reads.
+    Task returns filters, processed read1, read2, and logfiles for filtering.
+    """
 
     filtered_r1_l1 = Path(f"{run_id}_linker1_R1.fastq.gz").resolve()
     filtered_r2_l1 = Path(f"{run_id}_linker1_R2.fastq.gz").resolve()
@@ -60,8 +68,8 @@ def filtering(
         "bbmap/bbduk.sh",
         f"in1={r1.local_path}",
         f"in2={r2.local_path}",
-        f"outm1={str(filtered_r1_l1)}",
-        f"outm2={str(filtered_r2_l1)}",
+        f"outm1={filtered_r1_l1}",
+        f"outm2={filtered_r2_l1}",
         "skipr1=t",
         "threads=96",
         "-Xmx196g",
@@ -75,7 +83,7 @@ def filtering(
     ]
 
     if skip1:
-        _bbduk1_cmd = ["echo", str("the first step skipped!!")]
+        _bbduk1_cmd = ["echo", "the first step skipped!!"]
         subprocess.run(["mv", r1.local_path, str(filtered_r1_l1)])
         subprocess.run(["mv", r2.local_path, str(filtered_r2_l1)])
         subprocess.run(["touch", str(l1_stats)])
@@ -88,10 +96,10 @@ def filtering(
 
     _bbduk2_cmd = [
         "bbmap/bbduk.sh",
-        f"in1={str(filtered_r1_l1)}",
-        f"in2={str(filtered_r2_l1)}",
-        f"outm1={str(filtered_r1_l2)}",
-        f"outm2={str(filtered_r2_l2)}",
+        f"in1={filtered_r1_l1}",
+        f"in2={filtered_r2_l1}",
+        f"outm1={filtered_r1_l2}",
+        f"outm2={filtered_r2_l2}",
         "skipr1=t",
         "threads=96",
         "-Xmx196g",
@@ -105,79 +113,54 @@ def filtering(
     ]
 
     if skip2:
-        _bbduk2_cmd = ["echo", str("the second step skipped!!")]
-        subprocess.run(["mv", str(filtered_r1_l1), str(filtered_r1_l2)])
-        subprocess.run(["mv", str(filtered_r2_l1), str(filtered_r2_l2)])
-        subprocess.run(["touch", str(l2_stats)])
+        _bbduk2_cmd = ["echo", "the second step skipped!!"]
+        subprocess.run(["mv", filtered_r1_l1, filtered_r1_l2])
+        subprocess.run(["mv", filtered_r2_l1, filtered_r2_l2])
+        subprocess.run(["touch", l2_stats])
 
     subprocess.run(_bbduk2_cmd)
 
+    if bulk or noLigation_bulk:
+        r2 = Path(f"{run_id}_S1_L001_R2_001.fastq").resolve()
+
+        _bc_cmd = [
+            "python",
+            "scripts/bc_process_newbulk.py",
+            "-i",
+            f"{filtered_r2_l2}",
+            "-o2",
+            f"{r2}",
+            "-bcf",
+            f"barcodes/{barcode_file.value}"
+        ]
+
+        if bulk:
+            _bc_cmd.append("-b")
+        if noLigation_bulk:
+            _bc_cmd.append("-nl")
+
+        subprocess.run(_bc_cmd)
+    else:
+        r2 = filtered_r2_l2
+
     return (
         LatchFile(
-            str(filtered_r1_l2),
+            filtered_r1_l2,
             f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_S1_L001_R1_001.fastq.gz"
         ),
         LatchFile(
-            str(filtered_r2_l2),
+            r2,
             f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_linker2_R2.fastq.gz"
         ),
         LatchFile(
-            str(l1_stats),
+            l1_stats,
             f"latch:///chromap_outputs/{run_id}/preprocessing/{l1_stats.name}"
         ),
         LatchFile(
-            str(l2_stats),
+            l2_stats,
             f"latch:///chromap_outputs/{run_id}/preprocessing/{l2_stats.name}"
         )
     )
-
-
-@medium_task(retries=0)
-def process_bc_task(
-    r2: LatchFile,
-    run_id: str,
-    bulk: bool,
-    noLigation_bulk: bool,
-    barcode_file: BarcodeFile
-) -> LatchFile:
-    """ Process read2: save genomic portion as read3, extract 16 bp
-    barcode seqs and save as read3
-    """
-    if (not (bulk or noLigation_bulk)):
-        return LatchFile(r2.local_path, r2.remote_path)
-
-    outdir = Path("chromap_inputs/").resolve()
-    os.mkdir(outdir)
-
-    new_r2 = Path(f"{outdir}/{run_id}_S1_L001_R2_001.fastq").resolve()
-    r3 = Path(f"{outdir}/{run_id}_S1_L001_R3_001.fastq").resolve()
-
-    _bc_cmd = [
-        "python",
-        "scripts/bc_process_newbulk.py",
-        "-i",
-        r2.local_path,
-        "-o2",
-        f"{str(new_r2)}",
-        "-o3",
-        f"{str(r3)}",
-        "-bcf",
-        f"barcodes/{barcode_file.value}"
-    ]
-
-    if bulk:
-        _bc_cmd.append("-b")
-        _bc_cmd.append("-cm")
-    if noLigation_bulk:
-        _bc_cmd.append("-nl")
-        _bc_cmd.append("-cm")
-
-    subprocess.run(_bc_cmd)
-
-    return LatchFile(
-            str(new_r2),
-            f"latch:///chromap_outputs/{run_id}/preprocessing/{run_id}_bulkd_R2.fastq.gz"
-        )
 
 
 @large_task(retries=0)
@@ -209,15 +192,15 @@ def alignment(
         "--preset",
         "atac",
         "-x",
-        str(index),
+        index,
         "-r",
-        str(reference),
+        reference,
         "-1",
         r1.local_path,
         "-2",
         r2.local_path,
         "-o",
-        str(fragment),
+        fragment,
         "-b",
         r2.local_path,
         "--barcode-whitelist",
@@ -269,40 +252,36 @@ def alignment(
             stdout=fw
         )
 
-    subprocess.run(
-        ["echo", str("make sure the out put file is tab delimited!")]
-    )
+    subprocess.run(["echo", "Make sure the output file is tab delimited!"])
 
     with open(str(unzip_file), "w") as fw:
         subprocess.run(["sed", "s/ /\t/g", str(temp_file)], stdout=fw)
 
     subprocess.run(
-        ["echo", "use tabix bgzip to convert bed file into gz file"]
+        ["echo", "Use the tabix bgzip to convert bed file into a gz file."]
     )
 
-    with open(str(output_file), "w") as fw:
+    with open(output_file, "w") as fw:
         subprocess.run(["bgzip", "-c", str(unzip_file)], stdout=fw)
 
-    with open(str(output_file_index), "w") as fw:
-        subprocess.run(
-            ["tabix", "-p", "bed", str(output_file), "-f"],  stdout=fw
-        )
+    with open(output_file_index, "w") as fw:
+        subprocess.run(["tabix", "-p", "bed", output_file, "-f"],  stdout=fw)
 
     return (
         LatchFile(
-            str(fragment),
+            fragment,
             f"latch:///chromap_outputs/{run_id}/chromap_output/aln.bed"
         ),
         LatchFile(
-            str(logfile),
+            logfile,
             f"latch:///chromap_outputs/{run_id}/chromap_output/chromap_log.txt"
         ),
         LatchFile(
-            str(output_file),
+            output_file,
             f"latch:///chromap_outputs/{run_id}/chromap_output/fragments.tsv.gz"
         ),
         LatchFile(
-            str(output_file_index),
+            output_file_index,
             f"latch:///chromap_outputs/{run_id}/chromap_output/fragments.tsv.gz.tbi"
         )
     )
@@ -564,11 +543,13 @@ metadata = LatchMetadata(
             display_name="skip linker1 filtering",
             description="If True, will skip first step linker1 filtering!",
             batch_table_column=True,
+            hidden=True
         ),
         "skip2": LatchParameter(
             display_name="skip linker2 filtering",
             description="If True, will skip first step linker2 filtering!",
             batch_table_column=True,
+            hidden=True
         ),
         "run_id": LatchParameter(
             display_name="run id",
@@ -675,17 +656,21 @@ def total_wf(
         2. reads with >3 mismatches in the ligation linker2 are removed
         from analysis
 
-    2. Perform sequence alignment with [Chromap](https://github.com/haowenz/chromap).
-        - Chromap will process barcodes from fastq_R2.gz and align reads of both
-        fastq_R1.gz and fastq_R2.gz files. The result is a fragment file which
-        can be used for downstream analysis by [ArchR](https://www.archrproject.com/)
-        or [Signac](https://stuartlab.org/signac/).
+    2. Perform sequence alignment with
+    [Chromap](https://github.com/haowenz/chromap).
+        - Chromap will process barcodes from fastq_R2.gz and align reads of
+        both fastq_R1.gz and fastq_R2.gz files. The result is a fragment file
+        which can be used for downstream analysis by
+        [ArchR](https://www.archrproject.com/) or
+        [Signac](https://stuartlab.org/signac/).
 
     3. Generate quality control metrics (ie. FRIP, TSS score) and peak
-    .bed/.h5 files using the [pycisTopic](https://github.com/aertslab/pycisTopic)package.
+    .bed/.h5 files using the
+    [pycisTopic](https://github.com/aertslab/pycisTopic)package.
 
     Questions? Comments?  Contact support@atlasxomics.com or post in the
-    AtlasXomics [Discord](https://discord.com/channels/1004748539827597413/1005222888384770108).
+    AtlasXomics
+    [Discord](https://discord.com/channels/1004748539827597413/1005222888384770108).
     """
 
     filtered_r1, filtered_r2, _, _ = filtering(
@@ -693,12 +678,7 @@ def total_wf(
         r2=r2,
         run_id=run_id,
         skip1=skip1,
-        skip2=skip2
-    )
-
-    bulkd_r2 = process_bc_task(
-        r2=filtered_r2,
-        run_id=run_id,
+        skip2=skip2,
         bulk=bulk,
         noLigation_bulk=noLigation_bulk,
         barcode_file=barcode_file
@@ -706,14 +686,14 @@ def total_wf(
 
     chromap_bed, chromap_log, chromap_frag, chromap_index = alignment(
         r1=filtered_r1,
-        r2=bulkd_r2,
+        r2=filtered_r2,
         run_id=run_id,
         species=species,
         barcode_file=barcode_file
     )
 
     reports = statistics(
-        r2=bulkd_r2,
+        r2=filtered_r2,
         bed=chromap_bed,
         frag=chromap_frag,
         logfile=chromap_log,
