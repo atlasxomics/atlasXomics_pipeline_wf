@@ -312,10 +312,10 @@ def statistics(
 ) -> LatchDir:
 
     work_dir = Path("Statistics/").resolve()
-    os.mkdir(work_dir)
+    os.makedirs(work_dir, exist_ok=True)
 
     tmp_dir = Path("tmp_dir/").resolve()
-    os.mkdir(tmp_dir)
+    os.makedirs(tmp_dir, exist_ok=True)
 
     whitelist = Path(f"barcodes/{barcode_file.value}").resolve()
     singlecell = Path(f"{work_dir}/singlecell.csv").resolve()
@@ -370,10 +370,6 @@ def statistics(
         Path(genome_dict[genome_id][2]).resolve(),
         "-w",
         whitelist,
-        "-d",
-        work_dir,
-        "-t",
-        tmp_dir,
         "-p",
         positions_file
     ]
@@ -405,13 +401,6 @@ def statistics(
     plotting_task(singlecell, positions_file)
 
     logging.info("Cleaning up /Statistics/.")
-    _cp_cmd = [
-        "cp",
-        "/root/Statistics/scATAC/quality_control/sample_metrics.pdf",
-        "/root/Statistics/qc_plot.pdf"
-    ]
-    subprocess.run(_cp_cmd)
-
     try:  # Put in try/except so not to break if missing
         os.remove("/root/Statistics/fragments_edited.tsv.gz")
         os.remove("/root/Statistics/tmp1.txt")
@@ -434,7 +423,7 @@ def lims_task(
 
     if upload:
 
-        data = Path(results_dir.local_path + '/summary.csv').resolve()
+        data = Path(results_dir.local_path + "/summary.csv").resolve()
 
         slims = lims.slims_init()
         results = lims.csv_to_dict(data)
@@ -486,9 +475,7 @@ def upload_latch_registry(
 
         prefix = f"{results_dir.remote_path}/"
 
-        peaks_bed = f"{prefix}{run_id}_peaks.bed"
         single_cell_file = f"{prefix}/singlecell.csv"
-
         fragments_file_tbi = f"{chromap_frag.remote_path}.tbi"
 
         with table.update() as updater:
@@ -498,7 +485,6 @@ def upload_latch_registry(
                     fastq_read_1=r1,
                     fastq_read_2=r2,
                     fragments_file=chromap_frag,
-                    peaks_bed=LatchFile(peaks_bed),
                     fragment_file_tbi=LatchFile(fragments_file_tbi),
                     single_cell_file=LatchFile(single_cell_file)
                 )
@@ -576,19 +562,6 @@ metadata = LatchMetadata(
                         bc50_old.txt for previous version of 50x50.",
             batch_table_column=True,
         ),
-        "bulk": LatchParameter(
-            display_name="bulk",
-            description=" If true, barcode sequences in reads will be \
-                        replaced with random barcodes (current: bulk).",
-            batch_table_column=True,
-        ),
-        "noLigation_bulk": LatchParameter(
-            display_name="no-ligation primer bulk",
-            description="If true, reads will have linker sequences added and \
-                        random barcodes assigned (current: no-ligation \
-                        primer bulk).",
-            batch_table_column=True,
-        ),
         "upload_to_slims": LatchParameter(
             display_name="upload to slims",
             description="Select for run metrics to be upload to SLIMS; if \
@@ -632,8 +605,6 @@ def total_wf(
     species: LatchDir,
     ng_id: Optional[str],
     barcode_file: BarcodeFile = BarcodeFile.x50,
-    noLigation_bulk: bool = False,
-    bulk: bool = False,
     upload_to_slims: bool = False,
     table_id: str = "761"
 ) -> List[Union[LatchDir, LatchFile]]:
@@ -721,22 +692,22 @@ def total_wf(
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
 
-LaunchPlan(
-    total_wf,
-    "demo",
-    {
-        "r1": LatchFile(
-            "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
-        ),
-        "r2": LatchFile(
-            "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
-        ),
-        "run_id": "demo",
-        "skip1": False,
-        "skip2": False,
-        "species": LatchDir("latch:///Chromap_references/Human")
-    }
-)
+# LaunchPlan(
+#     total_wf,
+#     "demo",
+#     {
+#         "r1": LatchFile(
+#             "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
+#         ),
+#         "r2": LatchFile(
+#             "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
+#         ),
+#         "run_id": "demo",
+#         "skip1": False,
+#         "skip2": False,
+#         "species": LatchDir("latch:///Chromap_references/Human")
+#     }
+# )
 
 if __name__ == "__main__":
 
@@ -749,7 +720,7 @@ if __name__ == "__main__":
     statistics(
         r2=r2,
         species=species,
-        run_id="sc_debug",
+        run_id="NoPeak_debug",
         barcode_file=BarcodeFile.x50,
         bed=bed,
         frag=frag,

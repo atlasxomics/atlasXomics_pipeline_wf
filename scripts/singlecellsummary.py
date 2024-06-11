@@ -144,24 +144,12 @@ summary_df.at[0, "Fraction reads with valid barcode"] = 1 - (
     chromap_log_stats(logfile, "Number of barcodes in whitelist")
 )
 
-# Extract number for peaks from .bed file
-peak_file = pd.read_csv(
-    f"./Statistics/{run_id}_peaks.bed", sep="\t", header=None
-)
-summary_df.at[0, "Number of peaks"] = len(peak_file.index)
-
 # Open cistopic results csv; calculate TSS, FRIP, pct_duplicates
 cistopic_obj = pd.read_csv("./Statistics/cistopic_cell_data.csv")
 summary_df.at[0, "TSS_enrichment"] = max(
     [
         cistopic_obj["TSS_enrichment"].mean(),
         cistopic_obj["TSS_enrichment"].median()
-    ]
-)
-summary_df.at[0, "FRIP"] = max(
-    [
-        cistopic_obj["FRIP"].mean(),
-        cistopic_obj["FRIP"].median()
     ]
 )
 summary_df.at[0, "Fraction duplicate reads"] = max(

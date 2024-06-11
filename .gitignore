@@ -4,3 +4,6 @@ wf/creds.py
 **/*.ipynb*
 .latch_report.tar.gz
 .latch/
+MACS/
+**/*.pkl
+pycisTopic/
