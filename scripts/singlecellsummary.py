@@ -31,6 +31,7 @@ ap.add_argument("-i", required=True)
 ap.add_argument("-g", required=True)
 ap.add_argument("-l", required=True)
 ap.add_argument("-v", required=True)
+ap.add_argument("-b", required=True)
 
 args = vars(ap.parse_args())
 
@@ -41,6 +42,7 @@ run_id = args["i"]
 genome = args["g"]
 logfile = args["l"]
 version = args["v"]
+bulk = bool(args["b"])
 
 tmp = Path("Statistics/tmp1.txt").resolve()
 
@@ -69,7 +71,6 @@ logging.info(f"Length fastq barcodes, post-filter: {len(fastq_df)}")
 fastq_df = fastq_df.sort_values(by=["barcodes"])
 fastq_df = fastq_df.value_counts(sort=False).reset_index()
 fastq_df.columns = ["barcodes", "count"]
-
 
 # Count barcode frequency from aln.bed, write to chromap_bc_inlst_freq.txt
 chromap_df = pd.read_csv(
@@ -153,11 +154,19 @@ summary_df.at[0, "TSS_enrichment"] = max(
     ]
 )
 summary_df.at[0, "Fraction duplicate reads"] = max(
-    [
-        cistopic_obj["Dupl_rate"].mean(),
-        cistopic_obj["Dupl_rate"].median()
-    ]
+    [cistopic_obj["Dupl_rate"].mean(), cistopic_obj["Dupl_rate"].median()]
 )
+
+if bulk:
+    summary_df.at[0, "FRIP"] = max(
+        [cistopic_obj["FRIP"].mean(), cistopic_obj["FRIP"].median()]
+    )
+
+    peak_file = pd.read_csv(
+        f"./Statistics/{run_id}_peaks.bed", sep="\t", header=None
+    )
+    summary_df.at[0, "Number of peaks"] = len(peak_file.index)
+
 summary_df.to_csv("/root/Statistics/summary.csv", header=True, index=False)
 logging.info("Output written to summary.csv")
 

@@ -294,7 +294,8 @@ def allocate_mem(
     logfile: LatchFile,
     species: LatchDir,
     run_id: str,
-    barcode_file: BarcodeFile
+    barcode_file: BarcodeFile,
+    bulk: bool
 ) -> int:
     bigs = ["bcFG210v4.txt", "bc220-20-MAY.txt"]
     return 750 if barcode_file.value in bigs else 192
@@ -308,7 +309,8 @@ def statistics(
     logfile: LatchFile,
     species: LatchDir,
     run_id: str,
-    barcode_file: BarcodeFile
+    barcode_file: BarcodeFile,
+    bulk: bool
 ) -> LatchDir:
 
     work_dir = Path("Statistics/").resolve()
@@ -371,7 +373,9 @@ def statistics(
         "-w",
         whitelist,
         "-p",
-        positions_file
+        positions_file,
+        "-b",
+        str(bulk)
     ]
 
     subprocess.run(_pyct_cmd)
@@ -392,7 +396,9 @@ def statistics(
         "-l",
         logfile,
         "-v",
-        open(Path("version").resolve(), "r").read()
+        open(Path("version").resolve(), "r").read(),
+        "-b",
+        str(bulk)
     ]
 
     subprocess.run(_sc_cmd)
@@ -605,6 +611,8 @@ def total_wf(
     species: LatchDir,
     ng_id: Optional[str],
     barcode_file: BarcodeFile = BarcodeFile.x50,
+    noLigation_bulk: bool = False,
+    bulk: bool = False,
     upload_to_slims: bool = False,
     table_id: str = "761"
 ) -> List[Union[LatchDir, LatchFile]]:
@@ -670,7 +678,8 @@ def total_wf(
         logfile=chromap_log,
         species=species,
         run_id=run_id,
-        barcode_file=barcode_file
+        barcode_file=barcode_file,
+        bulk=bulk
     )
 
     lims_task(
