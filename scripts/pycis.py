@@ -27,6 +27,8 @@ ap.add_argument("-k", required=True)
 ap.add_argument("-w", required=True)
 ap.add_argument("-p", required=True)
 ap.add_argument("-b", required=True)
+ap.add_argument("-nl", required=True)
+ap.add_argument("-cp", required=True)
 
 args = vars(ap.parse_args())
 
@@ -38,6 +40,8 @@ black_lst = args["k"] if genome != "rnor6" else None
 whitelist = args["w"]
 positions_file = args["p"]
 bulk = bool(args["b"])
+noLigation_bulk = bool(args["nl"])
+call_peaks = bool(args["cp"])
 
 work_dir = Path("Statistics").resolve()
 tmp_dir = Path("tmp_dir").resolve()
@@ -75,9 +79,9 @@ chromsizes["Chromosome"] = chromsizes["Chromosome"].apply(
 )
 chromsizes = pr.PyRanges(chromsizes)
 
-if bulk:
+if any([bulk, noLigation_bulk, call_peaks]):
 
-    logging.info("Performing peak calling for bulk...")
+    logging.info("Performing peak calling...")
 
     # Prepare cell_data, chomsizes for pycistopic
     # cell_data: {index=barcode} | barcode | variable | Sample
@@ -201,12 +205,12 @@ stats = [
     "insert_size_distribution",
     "profile_tss"
 ]
-if bulk:
+if any([bulk, noLigation_bulk, call_peaks]):
     stats = stats + ["frip"]
 
 path_to_regions = {
        run_id: f"{work_dir}/scATAC/consensus_peak_calling/consensus_regions.bed"
-    } if bulk else None
+    } if bulk or call_peaks else None
 
 metadata_bc, profile_data_dict = compute_qc_stats(
     fragments_dict=fragments_dict,

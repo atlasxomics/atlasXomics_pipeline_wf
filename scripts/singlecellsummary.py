@@ -32,6 +32,8 @@ ap.add_argument("-g", required=True)
 ap.add_argument("-l", required=True)
 ap.add_argument("-v", required=True)
 ap.add_argument("-b", required=True)
+ap.add_argument("-nl", required=True)
+ap.add_argument("-cp", required=True)
 
 args = vars(ap.parse_args())
 
@@ -43,6 +45,8 @@ genome = args["g"]
 logfile = args["l"]
 version = args["v"]
 bulk = bool(args["b"])
+noLigation_bulk = bool(args["nl"])
+call_peaks = bool(args["cp"])
 
 tmp = Path("Statistics/tmp1.txt").resolve()
 
@@ -157,7 +161,7 @@ summary_df.at[0, "Fraction duplicate reads"] = max(
     [cistopic_obj["Dupl_rate"].mean(), cistopic_obj["Dupl_rate"].median()]
 )
 
-if bulk:
+if any([bulk, noLigation_bulk, call_peaks]):
     summary_df.at[0, "FRIP"] = max(
         [cistopic_obj["FRIP"].mean(), cistopic_obj["FRIP"].median()]
     )

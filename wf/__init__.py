@@ -23,6 +23,9 @@ from latch.types import (
     LatchParameter,
     LatchRule
 )
+from latch.types.metadata import (
+    Fork, ForkBranch, Params, Section, Spoiler, Text
+)
 
 import wf.lims as lims
 
@@ -295,7 +298,9 @@ def allocate_mem(
     species: LatchDir,
     run_id: str,
     barcode_file: BarcodeFile,
-    bulk: bool
+    bulk: bool,
+    noLigation_bulk: bool,
+    peak_calling: bool
 ) -> int:
     bigs = ["bcFG210v4.txt", "bc220-20-MAY.txt"]
     return 750 if barcode_file.value in bigs else 192
@@ -310,7 +315,9 @@ def statistics(
     species: LatchDir,
     run_id: str,
     barcode_file: BarcodeFile,
-    bulk: bool
+    bulk: bool,
+    noLigation_bulk: bool,
+    peak_calling: bool
 ) -> LatchDir:
 
     work_dir = Path("Statistics/").resolve()
@@ -375,7 +382,11 @@ def statistics(
         "-p",
         positions_file,
         "-b",
-        str(bulk)
+        str(bulk),
+        "-nl",
+        str(noLigation_bulk),
+        "-cp",
+        str(peak_calling)
     ]
 
     subprocess.run(_pyct_cmd)
@@ -398,7 +409,11 @@ def statistics(
         "-v",
         open(Path("version").resolve(), "r").read(),
         "-b",
-        str(bulk)
+        str(bulk),
+        "-nl",
+        str(noLigation_bulk),
+        "-cp",
+        str(peak_calling)
     ]
 
     subprocess.run(_sc_cmd)
@@ -437,7 +452,7 @@ def lims_task(
         payload = {lims.mapping[key]: value for (key, value) in results.items()
                    if key in lims.mapping.keys() and value not in lims.NA}
 
-        if ng_id:
+        if ng_id is not None:
             pk = lims.get_pk(ng_id, slims)
         else:
             try:
@@ -470,7 +485,10 @@ def upload_latch_registry(
     r2: LatchFile,
     chromap_frag: LatchFile,
     results_dir: LatchDir,
-    table_id: str = "761"
+    bulk: bool,
+    noLigation_bulk: bool,
+    peak_calling: bool,
+    table_id: str = "761",
 ):
 
     acc = Account.current()
@@ -484,16 +502,30 @@ def upload_latch_registry(
         single_cell_file = f"{prefix}/singlecell.csv"
         fragments_file_tbi = f"{chromap_frag.remote_path}.tbi"
 
+        if any([bulk, noLigation_bulk, peak_calling]):
+            peaks_bed = f"{prefix}{run_id}_peaks.bed"
+
         with table.update() as updater:
             try:
-                updater.upsert_record(
-                    run_id,
-                    fastq_read_1=r1,
-                    fastq_read_2=r2,
-                    fragments_file=chromap_frag,
-                    fragment_file_tbi=LatchFile(fragments_file_tbi),
-                    single_cell_file=LatchFile(single_cell_file)
-                )
+                if any([bulk, noLigation_bulk, peak_calling]):
+                    updater.upsert_record(
+                        run_id,
+                        fastq_read_1=r1,
+                        fastq_read_2=r2,
+                        fragments_file=chromap_frag,
+                        peaks_bed=LatchFile(peaks_bed),
+                        fragment_file_tbi=LatchFile(fragments_file_tbi),
+                        single_cell_file=LatchFile(single_cell_file)
+                    )
+                else:
+                    updater.upsert_record(
+                        run_id,
+                        fastq_read_1=r1,
+                        fastq_read_2=r2,
+                        fragments_file=chromap_frag,
+                        fragment_file_tbi=LatchFile(fragments_file_tbi),
+                        single_cell_file=LatchFile(single_cell_file)
+                    )
                 return
             except TypeError:
                 logging.warning(f"No table with id {table_id} found.")
@@ -504,6 +536,61 @@ def upload_latch_registry(
         return
 
 
+flow = [
+    Section(
+        "Run Parameters",
+        Text(
+            "Essential parameters for the analysis of epigenomic DBiT-seq "
+            "experiemnts.  Reference genome directories can be found in the "
+            "Latch File System in the `Chromap_references` directory.  This "
+            "Workflow supports 'spatial' and 'bulk' run types; if analyzing "
+            "spatial runs for 210 or more channels, or deep sequencing, we do "
+            "not recommend performing peak calling due to the time and cost "
+            "of processing."
+        ),
+        Params("run_id"),
+        Params("r1"),
+        Params("r2"),
+        Params("species"),
+        Params("barcode_file"),
+        Fork(
+            "run_type",
+            "specificy run type",
+            spatial=ForkBranch("spatial", Params("peak_calling")),
+            bulk=ForkBranch("bulk", Params("bulk"), Params("noLigation_bulk")),
+        ),
+        Spoiler(
+            "read filtering",
+            Text(
+                "Choose whether to skip filtering of raw fastq reads based on "
+                "sequence indentify of the ligation linker sequences; turning "
+                "off filtering is _not_ recommended for standard "
+                "preprocessing."
+            ),
+            Params("skip1"),
+            Params("skip2"),
+        ),
+    ),
+    Section(
+        "Data Tracking",
+        Text(
+            "Specifications for tracking analysis metadata and metrics; "
+            "primarly for AtlasXomics internal use. If you would like to "
+            "implement data tracking for your organazion, please contact your "
+            "AtlasXomics support scientist."
+        ),
+        Spoiler(
+            "SLIMS",
+            Params("upload_to_slims"),
+            Params("ng_id")
+        ),
+        Spoiler(
+            "Latch Registry",
+            Params("table_id")
+        ),
+    )
+]
+
 metadata = LatchMetadata(
     display_name="ATX epigenomic preprocessing",
     author=LatchAuthor(
@@ -513,40 +600,10 @@ metadata = LatchMetadata(
     ),
     repository="https://github.com/atlasxomics/atlasXomics_pipeline_wf",
     parameters={
-        "species": LatchParameter(
-            display_name="Chromap genome directory",
-            description="Select reference genome for chromap alignment. Make \
-                    sure to use right directory, eg. \
-                    '/Chromap_references/Refdata_scATAC_MAESTRO_GRCm38_1.1.0'",
-            batch_table_column=True,
-        ),
-        "r1": LatchParameter(
-            display_name="read 1",
-            description="Read 1 must contain genomic sequence.",
-            batch_table_column=True,
-        ),
-        "r2": LatchParameter(
-            display_name="read 2",
-            description="Read 2 must contain barcode sequences \
-                        and end with >35bp of genomic sequence.",
-            batch_table_column=True,
-        ),
-        "skip1": LatchParameter(
-            display_name="skip linker1 filtering",
-            description="If True, will skip first step linker1 filtering!",
-            batch_table_column=True,
-            hidden=True
-        ),
-        "skip2": LatchParameter(
-            display_name="skip linker2 filtering",
-            description="If True, will skip first step linker2 filtering!",
-            batch_table_column=True,
-            hidden=True
-        ),
         "run_id": LatchParameter(
             display_name="run id",
-            description="ATX Run ID with optional prefix, default to \
-                        Dxxxxx_NGxxxxx format.",
+            description="ATX Run ID with optional prefix, default to "
+                        "Dxxxxx_NGxxxxx format.",
             batch_table_column=True,
             placeholder="Dxxxxx_NGxxxxx",
             rules=[
@@ -556,28 +613,68 @@ metadata = LatchMetadata(
                 ),
                 LatchRule(
                     regex="_NG[0-9]{5}$",
-                    message="Provide ng_id in ng_id field if upload to \
-                    SLIMS desired."
+                    message="Provide ng_id in ng_id field if upload to "
+                            "SLIMS desired."
                 )
             ]
         ),
+        "r1": LatchParameter(
+            display_name="read 1",
+            description="Read 1 must contain genomic sequence.",
+            batch_table_column=True,
+        ),
+        "r2": LatchParameter(
+            display_name="read 2",
+            description="Read 2 must contain barcode sequences and end with "
+                        ">35bp of genomic sequence.",
+            batch_table_column=True,
+        ),
+        "species": LatchParameter(
+            display_name="Chromap genome directory",
+            description="Select reference genome for chromap alignment. Make "
+                        "sure to use right directory, eg. "
+                        "/Chromap_references/Refdata_scATAC_MAESTRO_GRCm38_1.1.0",
+            batch_table_column=True,
+        ),
         "barcode_file": LatchParameter(
             display_name="barcode file",
-            description="Expected sequences of barcodes used is assay; \
-                        bc50.txt for SOP 50x50, bc96.txt for 96x96, \
-                        bc50_old.txt for previous version of 50x50.",
+            description="Expected sequences of barcodes used is assay; "
+                        "bc50.txt for SOP 50x50, bc96.txt for 96x96, "
+                        "bc50_old.txt for previous version of 50x50.",
+            batch_table_column=True,
+        ),
+        "peak_calling": LatchParameter(
+            display_name="perform peak calling",
+            description="Perform peak calling in Statistics step to generate "
+                        "FRIP and Number of Peaks metrics; not advised for "
+                        "runs with with 210 channels or more, or deep "
+                        "sequencing",
+            batch_table_column=True,
+        ),
+        "bulk": LatchParameter(
+            display_name="bulk",
+            description="If true, barcode sequences in reads will be "
+                        "replaced with random barcodes (current: bulk).",
+            batch_table_column=True,
+        ),
+        "noLigation_bulk": LatchParameter(
+            display_name="no-ligation primer bulk",
+            description="If true, reads will have linker sequences added and "
+                        "random barcodes assigned (current: no-ligation "
+                        "primer bulk",
             batch_table_column=True,
         ),
         "upload_to_slims": LatchParameter(
             display_name="upload to slims",
-            description="Select for run metrics to be upload to SLIMS; if \
-                        selected provide ng_id.",
+            description="Select for run metrics to be upload to SLIMS; if "
+                        "selected provide ng_id.",
             batch_table_column=True,
         ),
         "ng_id": LatchParameter(
             display_name="ng_id",
-            description="Provide SLIMS ng_id (ie. NG00001) if pushing to \
-                        SLIMS and run_id does not end in '_NG00001'.",
+            description="Provide SLIMS ng_id (ie. NG00001) if pushing to "
+                        "SLIMS and run_id does not end in NG ID, e.g. "
+                        "'_NG00001'.",
             placeholder="NGxxxxx",
             batch_table_column=True,
             rules=[
@@ -593,11 +690,24 @@ metadata = LatchMetadata(
         ),
         "table_id": LatchParameter(
             display_name="Registry Table ID",
-            description="Provide the ID of the Registry table. Files that \
-                        will be populated in the table are: singlecell.csv, \
-                        fragments.tsv.gz, and summary.csv"
-        )
+            description="Provide the ID of the Registry table. Files that"
+                        "will be populated in the table are: singlecell.csv, "
+                        "fragments.tsv.gz, and summary.csv"
+        ),
+        "skip1": LatchParameter(
+            display_name="skip linker1 filtering",
+            description="If True, will skip first step linker1 filtering!",
+            batch_table_column=True,
+            hidden=True
+        ),
+        "skip2": LatchParameter(
+            display_name="skip linker2 filtering",
+            description="If True, will skip first step linker2 filtering!",
+            batch_table_column=True,
+            hidden=True
+        ),
     },
+    flow=flow
 )
 
 
@@ -611,6 +721,7 @@ def total_wf(
     species: LatchDir,
     ng_id: Optional[str],
     barcode_file: BarcodeFile = BarcodeFile.x50,
+    peak_calling: bool = False,
     noLigation_bulk: bool = False,
     bulk: bool = False,
     upload_to_slims: bool = False,
@@ -679,7 +790,9 @@ def total_wf(
         species=species,
         run_id=run_id,
         barcode_file=barcode_file,
-        bulk=bulk
+        bulk=bulk,
+        noLigation_bulk=noLigation_bulk,
+        peak_calling=peak_calling
     )
 
     lims_task(
@@ -695,28 +808,31 @@ def total_wf(
         r2=r1,
         chromap_frag=chromap_frag,
         results_dir=reports,
-        table_id=table_id
+        table_id=table_id,
+        bulk=bulk,
+        noLigation_bulk=noLigation_bulk,
+        peak_calling=peak_calling
     )
 
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
 
-# LaunchPlan(
-#     total_wf,
-#     "demo",
-#     {
-#         "r1": LatchFile(
-#             "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
-#         ),
-#         "r2": LatchFile(
-#             "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
-#         ),
-#         "run_id": "demo",
-#         "skip1": False,
-#         "skip2": False,
-#         "species": LatchDir("latch:///Chromap_references/Human")
-#     }
-# )
+LaunchPlan(
+    total_wf,
+    "demo",
+    {
+        "r1": LatchFile(
+            "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
+        ),
+        "r2": LatchFile(
+            "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
+        ),
+        "run_id": "demo",
+        "skip1": False,
+        "skip2": False,
+        "species": LatchDir("latch:///Chromap_references/Human")
+    }
+)
 
 if __name__ == "__main__":
 
