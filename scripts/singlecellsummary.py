@@ -44,9 +44,9 @@ run_id = args["i"]
 genome = args["g"]
 logfile = args["l"]
 version = args["v"]
-bulk = bool(args["b"])
-noLigation_bulk = bool(args["nl"])
-call_peaks = bool(args["cp"])
+bulk = eval(args["b"])
+noLigation_bulk = eval(args["nl"])
+call_peaks = eval(args["cp"])
 
 tmp = Path("Statistics/tmp1.txt").resolve()
 

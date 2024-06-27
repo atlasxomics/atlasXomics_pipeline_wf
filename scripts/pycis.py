@@ -39,9 +39,9 @@ chrsize = args["c"]
 black_lst = args["k"] if genome != "rnor6" else None
 whitelist = args["w"]
 positions_file = args["p"]
-bulk = bool(args["b"])
-noLigation_bulk = bool(args["nl"])
-call_peaks = bool(args["cp"])
+bulk = eval(args["b"])
+noLigation_bulk = eval(args["nl"])
+call_peaks = eval(args["cp"])
 
 work_dir = Path("Statistics").resolve()
 tmp_dir = Path("tmp_dir").resolve()
