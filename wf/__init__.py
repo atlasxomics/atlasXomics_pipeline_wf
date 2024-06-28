@@ -817,22 +817,22 @@ def total_wf(
     return [chromap_bed, chromap_frag, chromap_log, chromap_index, reports]
 
 
-# LaunchPlan(
-#     total_wf,
-#     "demo",
-#     {
-#         "r1": LatchFile(
-#             "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
-#         ),
-#         "r2": LatchFile(
-#             "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
-#         ),
-#         "run_id": "demo",
-#         "skip1": False,
-#         "skip2": False,
-#         "species": LatchDir("latch:///Chromap_references/Human")
-#     }
-# )
+LaunchPlan(
+    total_wf,
+    "demo",
+    {
+        "r1": LatchFile(
+            "s3://latch-public/test-data/13502/atx_demo_R1_001.fastq.gz"
+        ),
+        "r2": LatchFile(
+            "s3://latch-public/test-data/13502/atx_demo_R2_001.fastq.gz"
+        ),
+        "run_id": "demo",
+        "skip1": False,
+        "skip2": False,
+        "species": LatchDir("latch:///Chromap_references/Human")
+    }
+)
 
 if __name__ == "__main__":
 
