@@ -439,7 +439,7 @@ def lims_task(
     results_dir: LatchDir,
     run_id: str,
     upload: bool,
-    ng_id: Optional[str]
+    ng_id: str
 ) -> LatchDir:
 
     if upload:
@@ -452,7 +452,7 @@ def lims_task(
         payload = {lims.mapping[key]: value for (key, value) in results.items()
                    if key in lims.mapping.keys() and value not in lims.NA}
 
-        if ng_id is not None:
+        if ng_id not in [None, "NG00000"]:
             pk = lims.get_pk(ng_id, slims)
         else:
             try:
@@ -716,10 +716,10 @@ def total_wf(
     r1: LatchFile,
     r2: LatchFile,
     run_id: str,
-    skip1: bool,
-    skip2: bool,
     species: LatchDir,
-    ng_id: Optional[str],
+    ng_id: str = "NG00000",
+    skip1: bool = False,
+    skip2: bool = False,
     barcode_file: BarcodeFile = BarcodeFile.x50,
     peak_calling: bool = False,
     noLigation_bulk: bool = False,
