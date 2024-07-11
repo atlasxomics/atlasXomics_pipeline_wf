@@ -8,7 +8,7 @@ import subprocess
 
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Union, Tuple
+from typing import List, Union, Tuple
 
 from latch import custom_task, large_task, small_task, workflow
 from latch.account import Account
