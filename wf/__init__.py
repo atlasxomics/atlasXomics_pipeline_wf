@@ -42,7 +42,6 @@ class BarcodeFile(Enum):
     x50_old = "bc50_old.txt"
     x96 = "bc96.txt"
     x96_fg = "bc96_fg.txt"
-    x210 = "bcFG210v4.txt"
     x220 = "bc220-20-MAY.txt"
 
 
@@ -302,7 +301,7 @@ def allocate_mem(
     noLigation_bulk: bool,
     peak_calling: bool
 ) -> int:
-    bigs = ["bcFG210v4.txt", "bc220-20-MAY.txt"]
+    bigs = ["bc220-20-MAY.txt"]  # leave as list in case more barcode files
     return 750 if barcode_file.value in bigs else 192
 
 
@@ -334,7 +333,6 @@ def statistics(
         "x50_old": "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
         "x96": "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv",
         "x96_fg": "s3://latch-public/test-data/13502/xfg96_11DEC_all_tissue_positions_list.csv",
-        "x210": "s3://latch-public/test-data/13502/xFG210v4_all_tissue_positions_list.csv",
         "x220": "s3://latch-public/test-data/13502/xbc220-20-MAY_alltissue_positions_list.csv"
     }
     positions_path = LatchFile(positions_paths[barcode_file.name])
@@ -544,7 +542,7 @@ flow = [
             "experiemnts.  Reference genome directories can be found in the "
             "Latch File System in the `Chromap_references` directory.  This "
             "Workflow supports 'spatial' and 'bulk' run types; if analyzing "
-            "spatial runs for 210 or more channels, or deep sequencing, we do "
+            "spatial runs for 220 or more channels, or deep sequencing, we do "
             "not recommend performing peak calling due to the time and cost "
             "of processing."
         ),
@@ -647,7 +645,7 @@ metadata = LatchMetadata(
             display_name="perform peak calling",
             description="Perform peak calling in Statistics step to generate "
                         "FRIP and Number of Peaks metrics; not advised for "
-                        "runs with with 210 channels or more, or deep "
+                        "runs with with 220 channels or more, or deep "
                         "sequencing",
             batch_table_column=True,
         ),
