@@ -45,11 +45,7 @@ ap.add_argument(
 args = vars(ap.parse_args())
 logging.info(f"args: {args}")
 
-bc2_start, bc2_end, bc1_start, bc1_end, seq_start = 22, 30, 60, 68, 117
-logging.info(
-    f"barcode coordinates: \
-        {(bc2_start, bc2_end, bc1_start, bc1_end, seq_start)}"
-)
+logging.info("barcode coordinates: 22, 30, 60, 68, 117")
 
 input_file_R2 = args["i"]
 output_file_R2 = args["o2"]
@@ -77,11 +73,22 @@ except gzip.BadGzipFile:
 with in_handle_R2, gzip.open(output_file_R2, "wt") as out_handle_R2:
 
     readCount = 0
+
     for title, seq, qual in FastqGeneralIterator(in_handle_R2):
+
         readCount += 1
 
         if not (readCount % 500000):
             logging.info(f"Processed {readCount} reads")
+
+        read_len = len(seq)
+        if read_len != 151:
+            logging.warn(
+                f"Read {readCount} is ({read_len}bp, not 151bp. Skipping \
+                    bulkification for this read."
+            )
+            out_handle_R2.write(f"@{title}\n{seq}\n+\n{qual}\n")
+            continue
 
         # get a random barcode from list
         barcode = random.choice(bc_list).rstrip()
@@ -103,7 +110,7 @@ with in_handle_R2, gzip.open(output_file_R2, "wt") as out_handle_R2:
             # we make a leader using the chosen random barcode
             leaderRead2 = makeLeader(barcode, merLen=8, fullLeader=True)
             # we substitute real read bases with synth leader read bases
-            outRead2 = leaderRead2+seq[len(leaderRead2):]
+            outRead2 = leaderRead2 + seq[len(leaderRead2):]
             # we we keep the intact quality scores for all the bases
             outRead2Qual = qual
             # we output the entry
