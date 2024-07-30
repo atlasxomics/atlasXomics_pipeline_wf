@@ -45,7 +45,8 @@ class BarcodeFile(Enum):
     x220 = "bc220-20-MAY.txt"
 
 
-@large_task(retries=0)
+# @large_task(retries=0)
+@custom_task(cpu=42, memory=192, storage_gib=500)
 def filtering(
     r1: LatchFile,
     r2: LatchFile,
@@ -73,7 +74,7 @@ def filtering(
         f"outm1={filtered_r1_l1}",
         f"outm2={filtered_r2_l1}",
         "skipr1=t",
-        "threads=96",
+        "threads=40",
         "-Xmx196g",
         "k=30",
         "mm=f",
@@ -103,7 +104,7 @@ def filtering(
         f"outm1={filtered_r1_l2}",
         f"outm2={filtered_r2_l2}",
         "skipr1=t",
-        "threads=96",
+        "threads=40",
         "-Xmx196g",
         "k=30",
         "mm=f",
@@ -165,7 +166,8 @@ def filtering(
     )
 
 
-@large_task(retries=0)
+# @large_task(retries=0)
+@custom_task(cpu=42, memory=192, storage_gib=500)
 def alignment(
     r1: LatchFile,
     r2: LatchFile,
@@ -305,7 +307,7 @@ def allocate_mem(
     return 750 if barcode_file.value in bigs else 192
 
 
-@custom_task(cpu=30, memory=allocate_mem, storage_gib=500)
+@custom_task(cpu=8, memory=allocate_mem, storage_gib=500)
 def statistics(
     r2: LatchFile,
     frag: LatchFile,
