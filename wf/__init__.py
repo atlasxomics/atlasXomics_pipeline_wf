@@ -192,7 +192,7 @@ def alignment(
     _chromap_command = [
         "/root/chromap/chromap",
         "-t",
-        "96",
+        "42",
         "--preset",
         "atac",
         "-x",
@@ -249,18 +249,22 @@ def alignment(
     output_file = Path(f"{outdir}/fragments.tsv.gz").resolve()
     output_file_index = Path(f"{outdir}/fragments.tsv.gz.tbi").resolve()
 
+    logging.info("Starting reformatting of fragment file")
     subprocess.run(["echo", str("add -1 to barcodes and zip the file!!")])
     with open(str(temp_file), "w") as fw:
         subprocess.run(  # awk expression needs to be ""; don't change...
             ["awk", 'BEGIN{FS=OFS=" "}{$4=$4"-1"}4', str(fragment)],
             stdout=fw
         )
+    logging.info("Completed adding -1 to barcodes")
 
+    logging.info("Reformatting to make it tab delimited")
     subprocess.run(["echo", "Make sure the output file is tab delimited!"])
-
     with open(str(unzip_file), "w") as fw:
         subprocess.run(["sed", "s/ /\t/g", str(temp_file)], stdout=fw)
+    logging.info("Completed tab replacment")
 
+    logging.info("Transformign bed file into block gzipd, with index")
     subprocess.run(
         ["echo", "Use the tabix bgzip to convert bed file into a gz file."]
     )
@@ -270,6 +274,7 @@ def alignment(
 
     with open(output_file_index, "w") as fw:
         subprocess.run(["tabix", "-p", "bed", output_file, "-f"],  stdout=fw)
+    logging.info("Completed fragment file transformations")
 
     return (
         LatchFile(
