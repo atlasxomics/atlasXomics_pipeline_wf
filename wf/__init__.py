@@ -4,6 +4,10 @@
 import glob
 import logging
 import os
+
+# May alleviate that warning, may/not help with speed
+os.environ['NUMEXPR_MAX_THREADS'] = '42'
+
 import subprocess
 
 from enum import Enum
