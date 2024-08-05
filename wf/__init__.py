@@ -617,8 +617,8 @@ metadata = LatchMetadata(
             placeholder="Dxxxxx_NGxxxxx",
             rules=[
                 LatchRule(
-                    regex="^[^/].*",
-                    message="run id cannot start with a '/'"
+                    regex="^[^/][^-.\s/]+$",
+                    message="run id cannot start with or contain a '/', dash (-), a period (.) or space"
                 ),
                 LatchRule(
                     regex="_NG[0-9]{5}$",
