@@ -48,8 +48,6 @@ class BarcodeFile(Enum):
     x96_fg = "bc96_fg.txt"
     x220 = "bc220-20-MAY.txt"
 
-
-# @large_task(retries=0)
 @custom_task(cpu=42, memory=192, storage_gib=500)
 def filtering(
     r1: LatchFile,
@@ -169,8 +167,6 @@ def filtering(
         )
     )
 
-
-# @large_task(retries=0)
 @custom_task(cpu=42, memory=192, storage_gib=500)
 def alignment(
     r1: LatchFile,
