@@ -43,6 +43,7 @@ class BarcodeFile(Enum):
     x96 = "bc96.txt"
     x96_fg = "bc96_fg.txt"
     x220 = "bc220-20-MAY.txt"
+    fan_20240614 = "20240614_2500barcode_AB_update.txt"
 
 
 @large_task(retries=0)
