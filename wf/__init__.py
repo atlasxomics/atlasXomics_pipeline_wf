@@ -624,7 +624,7 @@ metadata = LatchMetadata(
         "r2": LatchParameter(
             display_name="read 2",
             description="Read 2 must contain barcode sequences and end with "
-                        ">35bp of genomic sequence.",
+                        ">33bp of genomic sequence.",
             batch_table_column=True,
         ),
         "species": LatchParameter(
