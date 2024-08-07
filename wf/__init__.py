@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Union, Tuple
 
-from latch import custom_task, large_task, small_task, workflow
+from latch import custom_task, small_task, workflow
 from latch.account import Account
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
