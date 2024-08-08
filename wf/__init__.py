@@ -4,13 +4,17 @@
 import glob
 import logging
 import os
+
+# May alleviate that warning, may/not help with speed
+os.environ['NUMEXPR_MAX_THREADS'] = '42'
+
 import subprocess
 
 from enum import Enum
 from pathlib import Path
 from typing import List, Union, Tuple
 
-from latch import custom_task, large_task, small_task, workflow
+from latch import custom_task, small_task, workflow
 from latch.account import Account
 from latch.functions.messages import message
 from latch.resources.launch_plan import LaunchPlan
@@ -44,8 +48,7 @@ class BarcodeFile(Enum):
     x96_fg = "bc96_fg.txt"
     x220 = "bc220-20-MAY.txt"
 
-
-@large_task(retries=0)
+@custom_task(cpu=42, memory=192, storage_gib=500)
 def filtering(
     r1: LatchFile,
     r2: LatchFile,
@@ -73,7 +76,7 @@ def filtering(
         f"outm1={filtered_r1_l1}",
         f"outm2={filtered_r2_l1}",
         "skipr1=t",
-        "threads=96",
+        "threads=40",
         "-Xmx196g",
         "k=30",
         "mm=f",
@@ -103,7 +106,7 @@ def filtering(
         f"outm1={filtered_r1_l2}",
         f"outm2={filtered_r2_l2}",
         "skipr1=t",
-        "threads=96",
+        "threads=40",
         "-Xmx196g",
         "k=30",
         "mm=f",
@@ -164,8 +167,7 @@ def filtering(
         )
     )
 
-
-@large_task(retries=0)
+@custom_task(cpu=42, memory=192, storage_gib=500)
 def alignment(
     r1: LatchFile,
     r2: LatchFile,
@@ -190,7 +192,7 @@ def alignment(
     _chromap_command = [
         "/root/chromap/chromap",
         "-t",
-        "96",
+        "42",
         "--preset",
         "atac",
         "-x",
@@ -247,18 +249,22 @@ def alignment(
     output_file = Path(f"{outdir}/fragments.tsv.gz").resolve()
     output_file_index = Path(f"{outdir}/fragments.tsv.gz.tbi").resolve()
 
+    logging.info("Starting reformatting of fragment file")
     subprocess.run(["echo", str("add -1 to barcodes and zip the file!!")])
     with open(str(temp_file), "w") as fw:
         subprocess.run(  # awk expression needs to be ""; don't change...
             ["awk", 'BEGIN{FS=OFS=" "}{$4=$4"-1"}4', str(fragment)],
             stdout=fw
         )
+    logging.info("Completed adding -1 to barcodes")
 
+    logging.info("Reformatting to make it tab delimited")
     subprocess.run(["echo", "Make sure the output file is tab delimited!"])
-
     with open(str(unzip_file), "w") as fw:
         subprocess.run(["sed", "s/ /\t/g", str(temp_file)], stdout=fw)
+    logging.info("Completed tab replacment")
 
+    logging.info("Transformign bed file into block gzipd, with index")
     subprocess.run(
         ["echo", "Use the tabix bgzip to convert bed file into a gz file."]
     )
@@ -268,6 +274,7 @@ def alignment(
 
     with open(output_file_index, "w") as fw:
         subprocess.run(["tabix", "-p", "bed", output_file, "-f"],  stdout=fw)
+    logging.info("Completed fragment file transformations")
 
     return (
         LatchFile(
@@ -305,7 +312,7 @@ def allocate_mem(
     return 750 if barcode_file.value in bigs else 192
 
 
-@custom_task(cpu=30, memory=allocate_mem, storage_gib=500)
+@custom_task(cpu=8, memory=allocate_mem, storage_gib=500)
 def statistics(
     r2: LatchFile,
     frag: LatchFile,
@@ -606,8 +613,8 @@ metadata = LatchMetadata(
             placeholder="Dxxxxx_NGxxxxx",
             rules=[
                 LatchRule(
-                    regex="^[^/].*",
-                    message="run id cannot start with a '/'"
+                    regex="^[^/][^-.\s/]+$",
+                    message="run id cannot start with or contain a '/', dash (-), a period (.) or space"
                 ),
                 LatchRule(
                     regex="_NG[0-9]{5}$",
