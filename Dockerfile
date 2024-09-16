@@ -22,10 +22,15 @@ RUN curl -L https://sourceforge.net/projects/bbmap/files/BBMap_39.01.tar.gz/down
     rm BBMap_39.01.tar.gz
 
 # install Chromap
-RUN git clone -b li_dev4 https://github.com/haowenz/chromap.git &&\
-    cd /root/chromap && \
-    make && \
-    cd /root 
+#RUN git clone -b li_dev4 https://github.com/haowenz/chromap.git &&\
+#    cd /root/chromap && \
+#    make && \
+#    cd /root 
+
+# Install Chromap release: 0.2.6-r490 binary
+RUN wget https://github.com/haowenz/chromap/releases/download/v0.2.6/chromap-0.2.6_x64-linux.tar.bz2
+RUN mkdir /root/chromap/
+RUN tar xvjf chromap-0.2.6_x64-linux.tar.bz2 -C /root/chromap/
 
 # Install python packages
 RUN pip install --upgrade pip
