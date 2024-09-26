@@ -4,10 +4,6 @@
 import glob
 import logging
 import os
-
-# May alleviate that warning, may/not help with speed
-os.environ['NUMEXPR_MAX_THREADS'] = '42'
-
 import subprocess
 
 from enum import Enum
@@ -35,6 +31,8 @@ import wf.lims as lims
 
 from wf.outliers import plotting_task
 
+# May alleviate that warning, may/not help with speed
+os.environ["NUMEXPR_MAX_THREADS"] = "42"
 
 logging.basicConfig(
     format="%(levelname)s - %(asctime)s - %(message)s", level=logging.INFO
@@ -46,7 +44,9 @@ class BarcodeFile(Enum):
     x50_old = "bc50_old.txt"
     x96 = "bc96.txt"
     x96_fg = "bc96_fg.txt"
-    x220 = "bc220-20-MAY.txt"
+    x220_old = "bc220-20-MAY.txt"
+    x220 = "bc220-18-SEP.txt"
+
 
 @custom_task(cpu=42, memory=192, storage_gib=500)
 def filtering(
@@ -166,6 +166,7 @@ def filtering(
             f"latch:///chromap_outputs/{run_id}/preprocessing/{l2_stats.name}"
         )
     )
+
 
 @custom_task(cpu=42, memory=192, storage_gib=500)
 def alignment(
@@ -340,7 +341,8 @@ def statistics(
         "x50_old": "s3://latch-public/test-data/13502/x50-old_tissue_positions_list.csv",
         "x96": "s3://latch-public/test-data/13502/x96_all_tissue_positions_list.csv",
         "x96_fg": "s3://latch-public/test-data/13502/xfg96_11DEC_all_tissue_positions_list.csv",
-        "x220": "s3://latch-public/test-data/13502/xbc220-20-MAY_alltissue_positions_list.csv"
+        "x220_old": "s3://latch-public/test-data/13502/xbc220-20-MAY_alltissue_positions_list.csv",
+        "x220": "s3://latch-public/test-data/13502/xbc220-18-SEP_alltissue_positions_list.csv"
     }
     positions_path = LatchFile(positions_paths[barcode_file.name])
     positions_file = Path(positions_path.local_path).resolve()
