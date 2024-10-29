@@ -28,6 +28,7 @@ from latch.types.metadata import (
 )
 
 import wf.lims as lims
+import wf.oob as oob
 
 from wf.outliers import plotting_task
 
@@ -251,17 +252,19 @@ def alignment(
     output_file_index = Path(f"{outdir}/fragments.tsv.gz.tbi").resolve()
 
     logging.info("Adding -1 to barcodes of fragment file...")
-    with open(str(temp_file), "w") as fw:
+    with open(temp_file, "w") as fw:
         subprocess.run(  # awk expression needs to be ""; don't change...
-            ["awk", 'BEGIN{FS=OFS=" "}{$4=$4"-1"}4', str(fragment)],
-            stdout=fw
+            ["awk", 'BEGIN{FS=OFS=" "}{$4=$4"-1"}4', str(fragment)], stdout=fw
         )
     logging.info("Completed adding -1 to barcodes...")
 
-    logging.info("Reformatting to make it tab delimited...")
-    with open(str(unzip_file), "w") as fw:
-        subprocess.run(["sed", "s/ /\t/g", str(temp_file)], stdout=fw)
-    logging.info("Completed tab replacment...")
+    logging.info("Filtering out-of-bound fragments...")
+    genome_id = reference.split("/")[-1].split("_")[0]
+    filtered_df = oob.filter_oob(
+        temp_file, oob.load_chromsizes(oob.chromsize_paths[genome_id])
+    )
+    filtered_df.to_csv(unzip_file, sep='\t', header=False, index=False)
+    logging.info("Completed out-of-bound filtering...")
 
     logging.info("Transforming bed file into block gzipd, with index...")
     with open(output_file, "w") as fw:
